@@ -1,22 +1,26 @@
 package app.ui
 
 import app.AppContext
-import java.awt.*
-import java.awt.font.FontRenderContext
-import java.awt.geom.AffineTransform
-import java.awt.image.BufferedImage
-import kotlin.math.ceil
-import javax.swing.*
+import java.awt.BorderLayout
+import java.awt.Dimension
+import java.awt.GridBagConstraints
+import java.awt.GridBagLayout
+import java.awt.Insets
+import javax.swing.BorderFactory
+import javax.swing.JButton
+import javax.swing.JComponent
+import javax.swing.JLabel
+import javax.swing.JOptionPane
+import javax.swing.JPanel
+import javax.swing.JScrollPane
+import javax.swing.JSpinner
+import javax.swing.JTable
+import javax.swing.JTextField
+import javax.swing.SpinnerNumberModel
 import javax.swing.border.EmptyBorder
 import javax.swing.table.DefaultTableModel
 
-class VenueFormPanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(BorderLayout()) {
-
-    private val backgroundColor = Color(0xF5, 0xF5, 0xF5)
-    private val textColor = Color(0x33, 0x33, 0x33)
-    private val cardColor = Color(0xFF, 0xFF, 0xFF)
-    private val buttonColor = Color(0x5B, 0x7C, 0x99)
-    private val highlightColor = Color(0xA8, 0xB9, 0xA2)
+class VenueFormPanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(BorderLayout(15, 15)) {
 
     private val nameField = JTextField(12)
     private val capacityField = JSpinner(SpinnerNumberModel(10, 1, 10000, 1))
@@ -30,14 +34,12 @@ class VenueFormPanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(B
     private val table = JTable(tableModel)
 
     init {
-        layout = BorderLayout(15, 15)
-        background = backgroundColor
+        background = UiTheme.backgroundColor
         border = EmptyBorder(20, 20, 20, 20)
 
-        val formCard = JPanel(GridBagLayout()).apply {
-            background = cardColor
+        val formCard = UiTheme.createCard(GridBagLayout()).apply {
             border = BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(highlightColor, 1, true),
+                BorderFactory.createTitledBorder(BorderFactory.createLineBorder(UiTheme.highlightColor), "Venue Details"),
                 EmptyBorder(15, 20, 15, 20)
             )
         }
@@ -46,11 +48,6 @@ class VenueFormPanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(B
             insets = Insets(6, 6, 6, 6)
             anchor = GridBagConstraints.WEST
             fill = GridBagConstraints.HORIZONTAL
-        }
-
-        fun JLabel.style(): JLabel = apply {
-            foreground = textColor
-            font = font.deriveFont(Font.BOLD)
         }
 
         fun JComponent.compact(): JComponent = apply {
@@ -62,7 +59,7 @@ class VenueFormPanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(B
             gbc.gridx = 0
             gbc.gridy = row
             gbc.weightx = 0.0
-            formCard.add(JLabel(label).style(), gbc)
+            formCard.add(UiTheme.styleLabel(JLabel(label), bold = true), gbc)
 
             gbc.gridx = 1
             gbc.weightx = 1.0
@@ -74,47 +71,22 @@ class VenueFormPanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(B
         addRow("Capacity:", capacityField)
         addRow("Location:", cityField)
 
-        val buttonPanel = JPanel(FlowLayout(FlowLayout.CENTER, 15, 0)).apply {
-            background = cardColor
-            border = EmptyBorder(10, 0, 0, 0)
-        }
-
-        val buttons = listOf(addButton, deleteButton, refreshButton)
-        buttons.forEach { button ->
-            button.background = buttonColor
-            button.foreground = Color.WHITE
-            button.isOpaque = true
-            button.border = BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(buttonColor.darker()),
-                EmptyBorder(8, 20, 8, 20)
-            )
-            button.font = button.font.deriveFont(Font.BOLD, 14f)
-            button.cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
-            buttonPanel.add(button)
-        }
+        val buttonPanel = UiTheme.createButtonRow(addButton, deleteButton, refreshButton)
 
         val formWrapper = JPanel(BorderLayout()).apply {
-            background = backgroundColor
+            background = UiTheme.backgroundColor
             add(formCard, BorderLayout.CENTER)
             add(buttonPanel, BorderLayout.SOUTH)
         }
 
-        val scrollPane = JScrollPane(table).apply {
-            border = BorderFactory.createTitledBorder(BorderFactory.createLineBorder(highlightColor), "Saved Venues")
-            preferredSize = Dimension(0, 220)
-        }
-        table.fillsViewportHeight = true
+        UiTheme.styleTable(table)
         table.autoResizeMode = JTable.AUTO_RESIZE_ALL_COLUMNS
-        table.foreground = textColor
-        table.background = Color.WHITE
-        table.gridColor = highlightColor
-        table.font = table.font.deriveFont(13f)
-        table.selectionBackground = highlightColor.darker()
-        table.selectionForeground = Color.WHITE
-        table.tableHeader.apply {
-            background = highlightColor
-            foreground = textColor
-            font = font.deriveFont(Font.BOLD)
+
+        val scrollPane = JScrollPane(table).apply {
+            border = BorderFactory.createTitledBorder(BorderFactory.createLineBorder(UiTheme.highlightColor), "Saved Venues")
+            preferredSize = Dimension(0, 220)
+            background = UiTheme.cardColor
+            viewport.background = java.awt.Color.WHITE
         }
 
         add(formWrapper, BorderLayout.NORTH)
@@ -125,28 +97,6 @@ class VenueFormPanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(B
         refreshButton.addActionListener { refreshTable() }
 
         refreshTable()
-    }
-
-    private fun createGlyphIcon(symbol: String, color: Color): Icon {
-        val font = Font("Dialog", Font.BOLD, 18)
-        val frc = FontRenderContext(AffineTransform(), true, true)
-        val glyphVector = font.createGlyphVector(frc, symbol)
-        val bounds = glyphVector.visualBounds
-        val width = ceil(bounds.width + 8).toInt().coerceAtLeast(1)
-        val height = ceil(bounds.height + 8).toInt().coerceAtLeast(1)
-
-        val image = BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)
-        val g2 = image.createGraphics()
-        g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
-        g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY)
-        g2.font = font
-        g2.color = color
-        val x = (4 - bounds.x).toFloat()
-        val y = (4 - bounds.y).toFloat()
-        g2.drawString(symbol, x, y)
-        g2.dispose()
-
-        return ImageIcon(image)
     }
 
     private fun addVenue() {
@@ -178,8 +128,6 @@ class VenueFormPanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(B
         }
         val id = tableModel.getValueAt(row, 0) as String
         val name = tableModel.getValueAt(row, 1) as String
-        val allVenues = AppContext.venueService.all().toMutableList()
-        allVenues.removeIf { it.id == id }
         AppContext.venueService.deleteVenueById(id)
         JOptionPane.showMessageDialog(this, "🗑 Venue '$name' removed!")
         refreshTable()
@@ -190,7 +138,7 @@ class VenueFormPanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(B
         val venues = AppContext.venueService.all()
         tableModel.setRowCount(0)
         venues.forEach {
-            tableModel.addRow(arrayOf(it.id, it.name, it.city, it.capacity))
+            tableModel.addRow(arrayOf<Any?>(it.id, it.name, it.city, it.capacity))
         }
     }
 
