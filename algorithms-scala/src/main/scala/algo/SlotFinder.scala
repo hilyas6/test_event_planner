@@ -77,8 +77,24 @@ object SlotFinder {
       }
     }
 
-    suggestions.toList
+    val sorted = suggestions.toList
       .sortBy(s => (-s.getConfidence(), s.getDate(), s.getStartTime()))
+
+    val diversified = scala.collection.mutable.ListBuffer.empty[SlotSuggestion]
+    val seenVenues = scala.collection.mutable.Set.empty[String]
+
+    sorted.foreach { s =>
+      val venueKey = Option(s.getVenueId()).getOrElse("")
+      if (!seenVenues.contains(venueKey)) {
+        diversified += s
+        seenVenues += venueKey
+      }
+    }
+
+    val prioritized = diversified.toList
+    val remaining = sorted.filterNot(prioritized.toSet)
+
+    (prioritized ++ remaining)
       .take(10)
       .asJava
   }

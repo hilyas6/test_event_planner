@@ -7,10 +7,17 @@ import java.awt.*
 
 class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(BorderLayout()) {
 
-    private data class EventOption(val event: core.model.Event, val remaining: Int, val capacity: Int) {
+    private data class EventOption(
+        val event: core.model.Event,
+        val schedule: core.model.ScheduledEvent,
+        val venueName: String,
+        val remaining: Int,
+        val capacity: Int
+    ) {
         override fun toString(): String {
-            val timeRange = "${event.startTime}-${event.endTime}"
-            return "${event.title} (${event.date} $timeRange, $remaining/${capacity} spots left)"
+            val timeRange = "${schedule.startTime}-${schedule.endTime}"
+            val venueDisplay = if (venueName.isBlank()) "Venue TBD" else venueName
+            return "${event.title} (${schedule.date} $timeRange @ $venueDisplay, $remaining/$capacity spots left)"
         }
     }
 
@@ -92,19 +99,26 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
         val participantModel = DefaultComboBoxModel<ParticipantOption>()
 
         val events = AppContext.eventService.reload()
+        val schedules = AppContext.scheduledEventService.reload()
         val participants = AppContext.participantService.reload()
+        val venues = AppContext.venueService.reload()
+        val venueMap = venues.associateBy { it.id }
+        val eventMap = events.associateBy { it.id }
         val now = java.time.LocalDateTime.now()
 
-        events
-            .sortedWith(compareBy({ it.date }, { it.startTime }))
-            .forEach { event ->
-                val eventStart = java.time.LocalDateTime.of(event.date, event.startTime)
-                if (eventStart.isBefore(now)) return@forEach
+        schedules
+            .mapNotNull { schedule ->
+                val event = eventMap[schedule.eventId] ?: return@mapNotNull null
+                val startDateTime = java.time.LocalDateTime.of(schedule.date, schedule.startTime)
+                if (startDateTime.isBefore(now)) return@mapNotNull null
                 val remaining = AppContext.registrationService.remainingCapacity(event)
-                if (remaining <= 0) return@forEach
+                if (remaining <= 0) return@mapNotNull null
                 val capacity = event.expectedSize
-                eventModel.addElement(EventOption(event, remaining, capacity))
+                val venueName = schedule.venueId?.let { venueMap[it]?.name } ?: ""
+                EventOption(event, schedule, venueName, remaining, capacity)
             }
+            .sortedWith(compareBy({ it.schedule.date }, { it.schedule.startTime }, { it.event.title }))
+            .forEach { eventModel.addElement(it) }
 
         participants
             .sortedWith(compareBy({ it.firstName }, { it.lastName }))
@@ -115,7 +129,7 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
 
         if (eventModel.size == 0) {
             eventDropdown.isEnabled = false
-            eventDropdown.toolTipText = "No upcoming events with available capacity"
+            eventDropdown.toolTipText = "No upcoming scheduled events with available capacity"
         } else {
             eventDropdown.isEnabled = true
             eventDropdown.toolTipText = null

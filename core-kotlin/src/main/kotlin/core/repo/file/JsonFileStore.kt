@@ -23,7 +23,8 @@ class JsonFileStore :
     EventRepository,
     VenueRepository,
     ParticipantRepository,
-    RegistrationRepository {
+    RegistrationRepository,
+    ScheduledEventRepository {
 
     private val baseDir = Paths.get(System.getProperty("user.dir"), "data")
 
@@ -123,6 +124,30 @@ class JsonFileStore :
         registrations.addAll(all)
         save("registrations.json", ListSerializer(Registration.serializer()), registrations)
     }
+
+    // Scheduled events
+    private val scheduledEvents = load("scheduled-events.json", ListSerializer(ScheduledEvent.serializer()))
+
+    override fun allScheduledEvents(): List<ScheduledEvent> = scheduledEvents
+
+    override fun saveScheduledEvent(scheduledEvent: ScheduledEvent) {
+        scheduledEvents.removeIf { it.eventId == scheduledEvent.eventId }
+        scheduledEvents.add(scheduledEvent)
+        save("scheduled-events.json", ListSerializer(ScheduledEvent.serializer()), scheduledEvents)
+    }
+
+    override fun deleteScheduledEventByEventId(eventId: String) {
+        val changed = scheduledEvents.removeIf { it.eventId == eventId }
+        if (changed) {
+            save("scheduled-events.json", ListSerializer(ScheduledEvent.serializer()), scheduledEvents)
+        }
+    }
+
+    override fun saveAllScheduledEvents(events: List<ScheduledEvent>) {
+        scheduledEvents.clear()
+        scheduledEvents.addAll(events)
+        save("scheduled-events.json", ListSerializer(ScheduledEvent.serializer()), scheduledEvents)
+    }
     // --- Reload helpers ---
 
     fun reloadEvents(): List<Event> {
@@ -148,6 +173,12 @@ class JsonFileStore :
         val fresh = load("registrations.json", kotlinx.serialization.builtins.ListSerializer(core.model.Registration.serializer()))
         registrations.clear(); registrations.addAll(fresh)
         return registrations
+    }
+
+    fun reloadScheduledEvents(): List<ScheduledEvent> {
+        val fresh = load("scheduled-events.json", kotlinx.serialization.builtins.ListSerializer(ScheduledEvent.serializer()))
+        scheduledEvents.clear(); scheduledEvents.addAll(fresh)
+        return scheduledEvents
     }
 
 }

@@ -19,15 +19,11 @@ class EventService(private val repo: EventRepository) {
         endTime: LocalTime,
         expectedSize: Int,
         organiserName: String,
-        organiserEmail: String,
-        priority: Int
+        organiserEmail: String
     ) {
         require(title.isNotBlank()) { "Title is required" }
         require(endTime.isAfter(startTime)) { "End time must be after start time" }
         require(expectedSize > 0) { "Capacity must be positive" }
-        require(priority > 0) { "Priority must be positive" }
-
-        val normalizedPriority = priority.coerceIn(1, 10)
 
         val event = Event(
             id = UUID.randomUUID().toString(),
@@ -40,7 +36,6 @@ class EventService(private val repo: EventRepository) {
             expectedSize = expectedSize,
             organiserName = organiserName.trim(),
             organiserEmail = organiserEmail.trim(),
-            priority = normalizedPriority,
             venueId = null
         )
 
