@@ -1,62 +1,109 @@
 package algo
 
-import core.model.{Event, Venue}
-import java.time.{LocalDate, LocalTime}
+import core.model.{Event, Participant, Registration, Venue}
+import java.time.{Duration, LocalDate, LocalTime}
 import scala.jdk.CollectionConverters._
 
 object SlotFinder {
 
+  private val SearchDays = 21
+  private val DayStart = LocalTime.of(8, 0)
+  private val DayEnd = LocalTime.of(21, 0)
+  private val DefaultDurationMinutes = 60L
+  private val StepMinutes = 30L
+
   /**
-   * Find the first available venue (capacity >= plannedSize) starting at or after earliestDate.
-   * Heuristic:
-   *  - For each candidate venue with enough capacity:
-   *    - Take all events at that venue from earliestDate onward
-   *    - Suggest the next start time immediately after the latest same-day end time,
-   *      or 09:00 if no events that day; if earliestDate has any event ending after 21:00,
-   *      move to the next day 09:00
-   *  - Return the venue with the earliest (date, time)
-   */
-  def findFirstAvailable(events: java.util.List[Event],
-                         venues: java.util.List[Venue],
-                         plannedSize: Int,
-                         earliestDate: LocalDate): java.util.Optional[SlotSuggestion] = {
+    * Propose the best slots for a meeting considering venue availability and participant calendars.
+    */
+  def proposeSlots(events: java.util.List[Event],
+                   venues: java.util.List[Venue],
+                   registrations: java.util.List[Registration],
+                   participants: java.util.List[Participant],
+                   plannedSize: Int,
+                   earliestDate: LocalDate): java.util.List[SlotSuggestion] = {
 
     val evs = events.asScala.toList
-    val vns = venues.asScala.toList
+    val vns = venues.asScala.toList.filter(_.getCapacity >= plannedSize)
+    val regs = registrations.asScala.toList
+    val parts = participants.asScala.toList
 
-    val dayStart = LocalTime.of(9, 0)
-    val dayEnd   = LocalTime.of(21, 0)
+    if (vns.isEmpty) return java.util.Collections.emptyList()
 
-    val candidates = vns.filter(v => v.getCapacity >= plannedSize)
+    val averageDuration = averageEventDuration(evs).getOrElse(Duration.ofMinutes(DefaultDurationMinutes))
+    val durationMinutes = averageDuration.toMinutes
 
-    val suggestions = candidates.flatMap { v =>
-      val relevant = evs.filter(e =>
-        e.getVenueId == v.getId && !e.getDate.isBefore(earliestDate)
-      ).sortBy(e => (e.getDate, e.getStartTime))
+    val eventsByVenueDate: Map[(String, LocalDate), List[(LocalTime, LocalTime)]] =
+      evs.flatMap { event =>
+        Option(event.getVenueId).map { vid =>
+          ((vid, event.getDate), (event.getStartTime, event.getEndTime))
+        }
+      }.groupBy(_._1).view.mapValues(_.map(_._2)).toMap.withDefaultValue(Nil)
 
-      // Compute the suggested (date, time)
-      val (date, time) =
-        if (relevant.isEmpty) (earliestDate, dayStart)
-        else {
-          val sameDay = relevant.filter(_.getDate == earliestDate)
-          if (sameDay.isEmpty) {
-            // no events that day -> start at 09:00
-            (earliestDate, dayStart)
-          } else {
-            val latestEnd = sameDay.map(_.getEndTime).max
-            val t = latestEnd.plusMinutes(0)
-            if (t.isAfter(dayEnd)) (earliestDate.plusDays(1), dayStart)
-            else (earliestDate, if (t.isBefore(dayStart)) dayStart else t)
+    val busyByParticipant: Map[String, List[(LocalDate, LocalTime, LocalTime)]] =
+      regs.flatMap { reg =>
+        evs.find(_.getId == reg.getEventId).map { event =>
+          (reg.getParticipantId, (event.getDate, event.getStartTime, event.getEndTime))
+        }
+      }.groupBy(_._1).view.mapValues(_.map(_._2)).toMap.withDefaultValue(Nil)
+
+    val participantIds = parts.map(_.getId).toSet
+
+    val suggestions = scala.collection.mutable.ListBuffer.empty[SlotSuggestion]
+
+    for {
+      dayOffset <- 0 until SearchDays
+      date = earliestDate.plusDays(dayOffset.toLong)
+      venue <- vns
+    } {
+      val venueBusy = eventsByVenueDate((venue.getId, date))
+      val slots = dailySlots(durationMinutes, venueBusy)
+      slots.foreach { start =>
+        val end = start.plusMinutes(durationMinutes)
+        val unavailable = participantIds.count { pid =>
+          busyByParticipant(pid).exists { case (d, s, e) =>
+            d == date && overlaps(s, e, start, end)
           }
         }
-
-      Some(new SlotSuggestion(v.getId, date, time))
+        val available = participantIds.size - unavailable
+        val confidence = if (participantIds.isEmpty) 1.0 else available.toDouble / participantIds.size.toDouble
+        val capacityFit = math.min(1.0, plannedSize.toDouble / math.max(1, venue.getCapacity).toDouble)
+        val compositeScore = confidence * 0.7 + (1 - capacityFit) * 0.3
+        val note = if (unavailable == 0) {
+          s"All ${participantIds.size} participants are free"
+        } else {
+          s"$available of ${participantIds.size} participants free"
+        }
+        suggestions += new SlotSuggestion(venue.getId, date, start, end, compositeScore, note)
+      }
     }
 
-    // Choose the earliest by date then time
-    suggestions.sortBy(s => (s.date, s.startTime)).headOption match {
-      case Some(s) => java.util.Optional.of(s)
-      case None    => java.util.Optional.empty()
-    }
+    suggestions.toList
+      .sortBy(s => (-s.getConfidence(), s.getDate(), s.getStartTime()))
+      .take(10)
+      .asJava
   }
+
+  private def averageEventDuration(events: List[Event]): Option[Duration] = {
+    val durations = events.map { e =>
+      Duration.between(e.getStartTime, e.getEndTime).toMinutes
+    }.filter(_ > 0)
+    if (durations.isEmpty) None
+    else Some(Duration.ofMinutes((durations.sum / durations.size.toDouble).round))
+  }
+
+  private def dailySlots(durationMinutes: Long,
+                         venueBusy: List[(LocalTime, LocalTime)]): List[LocalTime] = {
+    val slots = scala.collection.mutable.ListBuffer.empty[LocalTime]
+    var current = DayStart
+    while (!current.plusMinutes(durationMinutes).isAfter(DayEnd)) {
+      val end = current.plusMinutes(durationMinutes)
+      val clash = venueBusy.exists { case (s, e) => overlaps(s, e, current, end) }
+      if (!clash) slots += current
+      current = current.plusMinutes(StepMinutes)
+    }
+    if (slots.isEmpty) List(DayEnd.minusMinutes(durationMinutes)) else slots.toList
+  }
+
+  private def overlaps(aStart: LocalTime, aEnd: LocalTime, bStart: LocalTime, bEnd: LocalTime): Boolean =
+    aStart.isBefore(bEnd) && bStart.isBefore(aEnd)
 }

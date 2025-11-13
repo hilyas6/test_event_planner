@@ -24,7 +24,7 @@ class EventFormPanel : JPanel(BorderLayout()) {
     private val refreshButton = JButton("↻ Refresh List")
 
     private val tableModel = DefaultTableModel(
-        arrayOf("Title", "Date", "Start", "End", "Expected Size", "Venue"),
+        arrayOf("Title", "Date", "Start", "End", "Expected Size"),
         0
     )
     private val eventTable = JTable(tableModel)
@@ -89,9 +89,8 @@ class EventFormPanel : JPanel(BorderLayout()) {
         tableModel.rowCount = 0
         val events = AppContext.eventService.all()
         events.forEach {
-            val venueName = "Unassigned"
             tableModel.addRow(
-                arrayOf(it.title, it.date, it.startTime, it.endTime, it.expectedSize, venueName)
+                arrayOf(it.title, it.date, it.startTime, it.endTime, it.expectedSize)
             )
         }
     }
@@ -103,14 +102,16 @@ class EventFormPanel : JPanel(BorderLayout()) {
             val start = LocalTime.parse(startTimeBox.selectedItem as String)
             val end = LocalTime.parse(endTimeBox.selectedItem as String)
 
-            // No venue selected now, pass blank string
             AppContext.eventService.addEvent(
-                titleField.text,
-                date,
-                start,
-                end,
-                (expectedSizeField.value as Int),
-                "" // venueId left empty for now
+                title = titleField.text,
+                description = descriptionField.text,
+                category = categoryField.text,
+                date = date,
+                startTime = start,
+                endTime = end,
+                expectedSize = (expectedSizeField.value as Int),
+                organiserName = organiserNameField.text,
+                organiserEmail = organiserEmailField.text
             )
 
             JOptionPane.showMessageDialog(this, "✅ Event added successfully!")

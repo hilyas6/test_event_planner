@@ -7,7 +7,11 @@ import scala.beans.BeanProperty
 final class SlotSuggestion(
                             @BeanProperty val venueId: String,
                             @BeanProperty val date: LocalDate,
-                            @BeanProperty val startTime: LocalTime
+                            @BeanProperty val startTime: LocalTime,
+                            @BeanProperty val endTime: LocalTime,
+                            @BeanProperty val confidence: Double,
+                            @BeanProperty val note: String
                           ) {
-  override def toString: String = s"SlotSuggestion(venueId=$venueId, date=$date, startTime=$startTime)"
+  override def toString: String =
+    s"SlotSuggestion(venueId=$venueId, date=$date, startTime=$startTime, endTime=$endTime, confidence=$confidence, note=$note)"
 }
