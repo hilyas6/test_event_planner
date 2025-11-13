@@ -2,6 +2,10 @@ package app.ui
 
 import app.AppContext
 import java.awt.*
+import java.awt.font.FontRenderContext
+import java.awt.geom.AffineTransform
+import java.awt.image.BufferedImage
+import kotlin.math.ceil
 import javax.swing.*
 import javax.swing.border.EmptyBorder
 import javax.swing.table.DefaultTableModel
@@ -18,11 +22,15 @@ class VenueFormPanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(B
     private val capacityField = JSpinner(SpinnerNumberModel(10, 1, 10000, 1))
     private val cityField = JTextField(12)
 
-    private val addButton = JButton("➕ Add")
-    private val deleteButton = JButton("🗑 Delete")
-    private val refreshButton = JButton("🔄 Refresh")
+    private val nameField = JTextField(12)
+    private val capacityField = JSpinner(SpinnerNumberModel(10, 1, 10000, 1))
+    private val cityField = JTextField(12)
 
-    private val tableModel = DefaultTableModel(arrayOf("ID", "Name", "City", "Capacity"), 0)
+    private val addButton = JButton("Add")
+    private val deleteButton = JButton("Delete")
+    private val refreshButton = JButton("Refresh")
+
+    private val tableModel = DefaultTableModel(arrayOf("ID", "Name", "Location", "Capacity"), 0)
     private val table = JTable(tableModel)
 
     init {
@@ -121,6 +129,28 @@ class VenueFormPanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(B
         refreshButton.addActionListener { refreshTable() }
 
         refreshTable()
+    }
+
+    private fun createGlyphIcon(symbol: String, color: Color): Icon {
+        val font = Font("Dialog", Font.BOLD, 18)
+        val frc = FontRenderContext(AffineTransform(), true, true)
+        val glyphVector = font.createGlyphVector(frc, symbol)
+        val bounds = glyphVector.visualBounds
+        val width = ceil(bounds.width + 8).toInt().coerceAtLeast(1)
+        val height = ceil(bounds.height + 8).toInt().coerceAtLeast(1)
+
+        val image = BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)
+        val g2 = image.createGraphics()
+        g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
+        g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY)
+        g2.font = font
+        g2.color = color
+        val x = (4 - bounds.x).toFloat()
+        val y = (4 - bounds.y).toFloat()
+        g2.drawString(symbol, x, y)
+        g2.dispose()
+
+        return ImageIcon(image)
     }
 
     private fun addVenue() {
