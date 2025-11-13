@@ -171,9 +171,18 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
             return
         }
 
+        if (eventOption.hasStarted) {
+            JOptionPane.showMessageDialog(this, "This event has already started. You cannot register for it anymore.")
+            refreshAll()
+            return
+        }
+
         try {
             AppContext.registrationService.register(eventOption.event.id, participantOption.participant.id)
-            JOptionPane.showMessageDialog(this, "✅ Registered ${participantOption.participant.firstName} ${participantOption.participant.lastName} for ${eventOption.event.title}")
+            JOptionPane.showMessageDialog(
+                this,
+                "✅ Registered ${participantOption.participant.firstName} ${participantOption.participant.lastName} for ${eventOption.event.title}"
+            )
             refreshAll()
             onDataChanged?.invoke()
         } catch (e: Exception) {
