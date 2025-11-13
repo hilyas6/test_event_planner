@@ -98,49 +98,19 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
         form.add(JLabel("Event:")); form.add(eventDropdown)
         form.add(JLabel("Participant:")); form.add(participantDropdown)
 
-        val detailsPanel = JPanel(GridBagLayout()).apply {
-            val labelInsets = Insets(2, 6, 2, 4)
-            val valueInsets = Insets(2, 4, 2, 6)
-
-            fun addRow(row: Int, label: String, component: JComponent) {
-                val labelConstraints = GridBagConstraints().apply {
-                    gridx = 0
-                    gridy = row
-                    anchor = GridBagConstraints.LINE_END
-                    insets = labelInsets
-                }
-                val valueConstraints = GridBagConstraints().apply {
-                    gridx = 1
-                    gridy = row
-                    weightx = 1.0
-                    fill = GridBagConstraints.HORIZONTAL
-                    anchor = GridBagConstraints.LINE_START
-                    insets = valueInsets
-                }
-
-                add(JLabel(label), labelConstraints)
-                add(component, valueConstraints)
-            }
-
-            addRow(0, "Name:", eventNameValue)
-            addRow(1, "Date:", eventDateValue)
-            addRow(2, "Time:", eventTimeValue)
-            addRow(3, "Venue:", eventVenueValue)
-            addRow(4, "Spaces Available:", eventCapacityValue)
-            val descriptionScroll = JScrollPane(eventDescriptionArea).apply {
+        val detailsPanel = JPanel(GridLayout(0, 2, 5, 5)).apply {
+            border = BorderFactory.createTitledBorder("Event Details")
+            add(JLabel("Name:")); add(eventNameValue)
+            add(JLabel("Date:")); add(eventDateValue)
+            add(JLabel("Time:")); add(eventTimeValue)
+            add(JLabel("Venue:")); add(eventVenueValue)
+            add(JLabel("Spaces Available:")); add(eventCapacityValue)
+            add(JLabel("Description:")); add(JScrollPane(eventDescriptionArea).apply {
+                preferredSize = Dimension(0, 70)
                 border = BorderFactory.createEmptyBorder()
-                preferredSize = Dimension(0, 80)
                 horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
                 verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED
-            }
-            addRow(5, "Description:", descriptionScroll)
-        }
-
-        val detailsScrollPane = JScrollPane(detailsPanel).apply {
-            border = BorderFactory.createTitledBorder("Event Details")
-            horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
-            verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED
-            preferredSize = Dimension(0, 180)
+            })
         }
 
         val filterPanel = JPanel(FlowLayout(FlowLayout.LEFT, 8, 5)).apply {
@@ -155,22 +125,16 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
         topPanel.layout = BoxLayout(topPanel, BoxLayout.Y_AXIS)
         topPanel.add(form)
         topPanel.add(Box.createVerticalStrut(8))
-        topPanel.add(detailsScrollPane)
+        topPanel.add(detailsPanel)
         topPanel.add(Box.createVerticalStrut(8))
         topPanel.add(filterPanel)
 
-        val registrationScrollPane = JScrollPane(table)
-        registrationScrollPane.border = BorderFactory.createTitledBorder("Registrations")
+        val scrollPane = JScrollPane(table)
+        scrollPane.border = BorderFactory.createTitledBorder("Registrations")
 
-        val contentPanel = JSplitPane(JSplitPane.VERTICAL_SPLIT).apply {
-            topComponent = JScrollPane(topPanel, ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER).apply {
-                border = BorderFactory.createEmptyBorder()
-            }
-            bottomComponent = registrationScrollPane
-            resizeWeight = 0.35
-            dividerLocation = 320
-            isOneTouchExpandable = true
-        }
+        val contentPanel = JPanel(BorderLayout(10, 10))
+        contentPanel.add(topPanel, BorderLayout.NORTH)
+        contentPanel.add(scrollPane, BorderLayout.CENTER)
 
         add(toolbar, BorderLayout.NORTH)
         add(contentPanel, BorderLayout.CENTER)
@@ -207,9 +171,18 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
             return
         }
 
+        if (eventOption.hasStarted) {
+            JOptionPane.showMessageDialog(this, "This event has already started. You cannot register for it anymore.")
+            refreshAll()
+            return
+        }
+
         try {
             AppContext.registrationService.register(eventOption.event.id, participantOption.participant.id)
-            JOptionPane.showMessageDialog(this, "✅ Registered ${participantOption.participant.firstName} ${participantOption.participant.lastName} for ${eventOption.event.title}")
+            JOptionPane.showMessageDialog(
+                this,
+                "✅ Registered ${participantOption.participant.firstName} ${participantOption.participant.lastName} for ${eventOption.event.title}"
+            )
             refreshAll()
             onDataChanged?.invoke()
         } catch (e: Exception) {
@@ -331,6 +304,8 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
         val venue = option.venue
         val remaining = AppContext.registrationService.remainingCapacity(event)
         val capacity = AppContext.registrationService.capacityLimit(event)
+        val hasStarted = option.hasStarted
+
         eventNameValue.text = event.title
         eventDateValue.text = schedule.date.format(dateFormatter)
         eventTimeValue.text = "${schedule.startTime} - ${schedule.endTime}"
@@ -341,10 +316,11 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
         eventDescriptionArea.caretPosition = 0
         eventDescriptionArea.toolTipText = if (description.length > 120) description else null
 
-        val canRegister = remaining > 0
+        val canRegister = remaining > 0 && !hasStarted
         registerButton.isEnabled = canRegister
         registerButton.toolTipText = when {
             !canRegister && remaining <= 0 -> "This event has reached full capacity"
+            !canRegister && hasStarted -> "This event has already started"
             else -> null
         }
     }
