@@ -34,6 +34,7 @@ class SchedulePanel : JPanel(BorderLayout()) {
     private val buildScheduleButton = JButton("🧩 Build Schedule")
     private val clearButton = JButton("🗑 Clear")
     private val confirmSlotButton = JButton("✅ Confirm Selected Slot")
+    private val confirmScheduleButton = JButton("✅ Confirm Selected Schedule")
     private val removeConfirmedButton = JButton("🗑 Remove Selected")
 
     private val slotTableModel = object : DefaultTableModel(
@@ -88,6 +89,7 @@ class SchedulePanel : JPanel(BorderLayout()) {
         findSlotButton.addActionListener { onFindSlot() }
         buildScheduleButton.addActionListener { onBuildSchedule() }
         confirmSlotButton.addActionListener { confirmSelectedSlot() }
+        confirmScheduleButton.addActionListener { confirmSelectedSchedule() }
         removeConfirmedButton.addActionListener { removeSelectedConfirmed() }
 
         refreshData()
@@ -146,6 +148,7 @@ class SchedulePanel : JPanel(BorderLayout()) {
         val schedulePanel = JPanel(BorderLayout(6, 6))
         schedulePanel.border = BorderFactory.createTitledBorder("Generated schedule preview")
         schedulePanel.add(JScrollPane(scheduleTable), BorderLayout.CENTER)
+        schedulePanel.add(confirmScheduleButton, BorderLayout.SOUTH)
 
         val confirmedPanel = JPanel(BorderLayout(6, 6))
         confirmedPanel.border = BorderFactory.createTitledBorder("Confirmed schedules")
@@ -332,8 +335,6 @@ class SchedulePanel : JPanel(BorderLayout()) {
 
             val evMap = eventsList.associateBy { it.id }
             val venueMap = venuesList.associateBy { it.id }
-            var confirmedCount = 0
-            var clearedCount = 0
 
             currentScheduleResults.forEach { r ->
                 val venueName = r.venueId.takeIf { it.isNotBlank() }?.let { venueMap[it]?.name }
@@ -351,43 +352,50 @@ class SchedulePanel : JPanel(BorderLayout()) {
                         r.note
                     )
                 )
-
-                if (r.scheduled) {
-                    try {
-                        AppContext.scheduledEventService.confirmSchedule(
-                            r.eventId,
-                            r.assignedDate,
-                            r.startTime,
-                            r.endTime,
-                            r.venueId.takeIf { it.isNotBlank() }
-                        )
-                        confirmedCount++
-                    } catch (ex: Exception) {
-                        ex.printStackTrace()
-                        JOptionPane.showMessageDialog(this, "Unable to confirm schedule for $title: ${ex.message}")
-                    }
-                } else {
-                    AppContext.scheduledEventService.removeSchedule(r.eventId)
-                    clearedCount++
-                }
             }
-
-            loadConfirmedSchedules()
-            refreshEventDropdown()
 
             if (currentScheduleResults.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "No schedule could be generated with current data.")
-            } else if (confirmedCount > 0 || clearedCount > 0) {
-                val parts = mutableListOf<String>()
-                if (confirmedCount > 0) parts += "confirmed $confirmedCount event(s)"
-                if (clearedCount > 0) parts += "cleared $clearedCount event(s)"
-                if (parts.isNotEmpty()) {
-                    JOptionPane.showMessageDialog(this, "Schedule builder ${parts.joinToString(" and ")}.")
-                }
             }
         } catch (e: Exception) {
             e.printStackTrace()
             JOptionPane.showMessageDialog(this, "Error: ${e.message}")
+        }
+    }
+
+    private fun confirmSelectedSchedule() {
+        val selectedRow = scheduleTable.selectedRow
+        if (selectedRow < 0) {
+            JOptionPane.showMessageDialog(this, "Select a generated schedule entry first.")
+            return
+        }
+
+        val schedule = currentScheduleResults.getOrNull(selectedRow)
+        if (schedule == null) {
+            JOptionPane.showMessageDialog(this, "No schedule data available for the selected row.")
+            return
+        }
+
+        if (!schedule.scheduled) {
+            JOptionPane.showMessageDialog(this, "The selected entry does not have an available schedule to confirm.")
+            return
+        }
+
+        try {
+            AppContext.scheduledEventService.confirmSchedule(
+                schedule.eventId,
+                schedule.assignedDate,
+                schedule.startTime,
+                schedule.endTime,
+                schedule.venueId.takeIf { it.isNotBlank() }
+            )
+            loadConfirmedSchedules()
+            refreshEventDropdown()
+            val title = scheduleTableModel.getValueAt(selectedRow, 0) as? String ?: schedule.eventId
+            JOptionPane.showMessageDialog(this, "Confirmed schedule for '$title'.")
+        } catch (e: Exception) {
+            e.printStackTrace()
+            JOptionPane.showMessageDialog(this, "Unable to confirm schedule: ${e.message}")
         }
     }
 
