@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ScalaCompilerConfiguration">
+    <profile name="Gradle 1" modules="event-planner.algorithms-scala.main,event-planner.algorithms-scala.test">
+      <option name="deprecationWarnings" value="true" />
+      <option name="uncheckedWarnings" value="true" />
+      <parameters>
+        <parameter value="-release" />
+        <parameter value="21" />
+      </parameters>
+    </profile>
+  </component>
+</project>
