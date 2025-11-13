@@ -13,5 +13,5 @@ data class Event(
     @Contextual val startTime: LocalTime,
     @Contextual val endTime: LocalTime,
     val expectedSize: Int,
-    val venueId: String
+    val venueId: String? = null
 )
