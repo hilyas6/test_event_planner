@@ -9,8 +9,8 @@ import java.util.*
 class EventService(private val repo: EventRepository) {
     fun all(): List<Event> = repo.allEvents()
 
-    fun addEvent(title: String, date: LocalDate, startTime: LocalTime, endTime: LocalTime, expectedSize: Int, venueId: String) {
-        val event = Event(UUID.randomUUID().toString(), title, date, startTime, endTime, expectedSize, venueId)
+    fun addEvent(title: String, date: LocalDate, startTime: LocalTime, endTime: LocalTime, expectedSize: Int) {
+        val event = Event(UUID.randomUUID().toString(), title, date, startTime, endTime, expectedSize)
         repo.saveEvent(event)
     }
 
