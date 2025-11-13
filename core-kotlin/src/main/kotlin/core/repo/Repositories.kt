@@ -29,3 +29,10 @@ interface RegistrationRepository {
     fun saveRegistration(registration: Registration)
     fun saveAllRegistrations(registrations: List<Registration>)
 }
+
+interface ScheduledEventRepository {
+    fun allScheduledEvents(): List<ScheduledEvent>
+    fun saveScheduledEvent(scheduledEvent: ScheduledEvent)
+    fun deleteScheduledEventByEventId(eventId: String)
+    fun saveAllScheduledEvents(events: List<ScheduledEvent>)
+}

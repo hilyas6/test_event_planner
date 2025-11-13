@@ -16,7 +16,6 @@ class EventFormPanel : JPanel(BorderLayout()) {
     private val startTimeBox = JComboBox((6..22).map { "%02d:00".format(it) }.toTypedArray())
     private val endTimeBox = JComboBox((7..23).map { "%02d:00".format(it) }.toTypedArray())
     private val expectedSizeField = JSpinner(SpinnerNumberModel(50, 1, 10000, 1))
-    private val prioritySpinner = JSpinner(SpinnerNumberModel(3, 1, 10, 1))
     private val organiserNameField = JTextField(25)
     private val organiserEmailField = JTextField(25)
 
@@ -26,7 +25,7 @@ class EventFormPanel : JPanel(BorderLayout()) {
 
     // Keep the codex (extended) table model
     private val tableModel = object : DefaultTableModel(
-        arrayOf("ID", "Title", "Date", "Start", "End", "Expected Size", "Priority"),
+        arrayOf("ID", "Title", "Date", "Start", "End", "Expected Size"),
         0
     ) {
         override fun isCellEditable(row: Int, column: Int) = false
@@ -67,7 +66,6 @@ class EventFormPanel : JPanel(BorderLayout()) {
         addRow("Start Time:", startTimeBox)
         addRow("End Time:", endTimeBox)
         addRow("Expected Size:", expectedSizeField)
-        addRow("Priority (1-10):", prioritySpinner)
         addRow("Organiser Name:", organiserNameField)
         addRow("Organiser Email:", organiserEmailField)
 
@@ -112,8 +110,7 @@ class EventFormPanel : JPanel(BorderLayout()) {
                         it.date,
                         it.startTime,
                         it.endTime,
-                        it.expectedSize,
-                        it.priority
+                        it.expectedSize
                     )
                 )
             }
@@ -136,8 +133,7 @@ class EventFormPanel : JPanel(BorderLayout()) {
                 endTime = end,
                 expectedSize = expectedSizeField.value as Int,
                 organiserName = organiserNameField.text,
-                organiserEmail = organiserEmailField.text,
-                priority = prioritySpinner.value as Int
+                organiserEmail = organiserEmailField.text
             )
 
             JOptionPane.showMessageDialog(this, "✅ Event added successfully!")
@@ -168,6 +164,5 @@ class EventFormPanel : JPanel(BorderLayout()) {
         expectedSizeField.value = 50
         organiserNameField.text = ""
         organiserEmailField.text = ""
-        prioritySpinner.value = 3
     }
 }
