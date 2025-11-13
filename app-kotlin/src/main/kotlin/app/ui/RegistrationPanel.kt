@@ -1,13 +1,30 @@
 package app.ui
 
 import app.AppContext
-import javax.swing.*
-import javax.swing.table.DefaultTableModel
-import java.awt.*
+import java.awt.BorderLayout
+import java.awt.Dimension
+import java.awt.FlowLayout
 import java.awt.GraphicsEnvironment
+import java.awt.GridBagConstraints
+import java.awt.GridBagLayout
+import java.awt.Insets
+import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import javax.swing.BorderFactory
+import javax.swing.DefaultComboBoxModel
+import javax.swing.JButton
+import javax.swing.JComboBox
+import javax.swing.JComponent
+import javax.swing.JLabel
+import javax.swing.JOptionPane
+import javax.swing.JPanel
+import javax.swing.JTable
+import javax.swing.JTextArea
+import javax.swing.JTextField
+import javax.swing.ScrollPaneConstants
+import javax.swing.table.DefaultTableModel
 
-class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(BorderLayout()) {
+class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(BorderLayout(15, 15)) {
 
     private data class EventOption(
         val event: core.model.Event,
@@ -29,10 +46,6 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
         }
     }
 
-    private data class ParticipantOption(val participant: core.model.Participant) {
-        override fun toString(): String = "${participant.firstName} ${participant.lastName}"
-    }
-
     private data class RegistrationRow(
         val registration: core.model.Registration,
         val participantName: String,
@@ -51,24 +64,16 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
     }
 
     private val eventDropdown = JComboBox<EventOption>()
-    private val participantDropdown = JComboBox<ParticipantOption>()
 
-    private val eventNameValue = JLabel("-")
-    private val eventDateValue = JLabel("-")
-    private val eventTimeValue = JLabel("-")
-    private val eventVenueValue = JLabel("-")
-    private val eventCapacityValue = JLabel("-")
-    private val eventDescriptionArea = JTextArea(3, 40).apply {
-        isEditable = false
-        lineWrap = true
-        wrapStyleWord = true
-        border = BorderFactory.createEmptyBorder(0, 0, 0, 0)
-        background = UIManager.getColor("Panel.background")
-    }
+    private val firstNameField = JTextField(15)
+    private val lastNameField = JTextField(15)
+    private val dobField = DatePickerField(LocalDate.now().minusYears(18))
+    private val phoneField = JTextField(15)
+    private val emailField = JTextField(25)
 
-    private val registerButton = JButton("✅ Register")
-    private val deleteButton = JButton("🗑 Delete")
-    private val refreshButton = JButton("🔄 Refresh")
+    private val registerButton = JButton("Register Participant")
+    private val deleteButton = JButton("Delete Registration")
+    private val refreshButton = JButton("Refresh Data")
 
     private val filterModeDropdown = JComboBox(FilterMode.values())
     private val filterValueDropdown = JComboBox<String>()
@@ -85,160 +90,47 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
 
     private var registrationRows: List<RegistrationRow> = emptyList()
 
-    private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+    private val dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+    private val emailRegex = Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")
+    private val phoneRegex = Regex("^[0-9]{11}$")
+
+    private val eventNameValue = JLabel("-")
+    private val eventDateValue = JLabel("-")
+    private val eventTimeValue = JLabel("-")
+    private val eventVenueValue = JLabel("-")
+    private val eventCapacityValue = JLabel("-")
+    private val eventDescriptionArea = JTextArea(3, 40).apply {
+        isEditable = false
+        lineWrap = true
+        wrapStyleWord = true
+        border = BorderFactory.createEmptyBorder()
+        background = UiTheme.cardColor
+    }
 
     init {
-        val toolbar = JToolBar()
-        toolbar.isFloatable = false
-        toolbar.add(registerButton)
-        toolbar.add(deleteButton)
-        toolbar.add(refreshButton)
+        background = UiTheme.backgroundColor
+        border = javax.swing.border.EmptyBorder(20, 20, 20, 20)
 
-        val form = JPanel(GridBagLayout()).apply {
-            border = BorderFactory.createTitledBorder("Register Participant")
-            val gbc = GridBagConstraints().apply {
-                insets = Insets(4, 4, 4, 4)
-                anchor = GridBagConstraints.WEST
-                fill = GridBagConstraints.HORIZONTAL
-                weightx = 0.0
+        UiTheme.stylePrimaryButton(registerButton)
+        UiTheme.stylePrimaryButton(deleteButton)
+        UiTheme.stylePrimaryButton(refreshButton)
+
+        val formCard = buildFormCard()
+        val eventDetailsCard = buildEventDetailsCard()
+        val filterCard = buildFilterCard()
+        val tableCard = buildTableCard()
+
+        val content = JPanel()
+        content.background = UiTheme.backgroundColor
+        content.layout = javax.swing.BoxLayout(content, javax.swing.BoxLayout.Y_AXIS)
+        listOf(formCard, eventDetailsCard, filterCard, tableCard).forEachIndexed { index, card ->
+            content.add(card)
+            if (index != 3) {
+                content.add(javax.swing.Box.createVerticalStrut(16))
             }
-
-            gbc.gridx = 0
-            gbc.gridy = 0
-            add(JLabel("Event:"), gbc)
-
-            gbc.gridx = 1
-            gbc.weightx = 1.0
-            add(eventDropdown, gbc)
-
-            gbc.gridx = 0
-            gbc.gridy = 1
-            gbc.weightx = 0.0
-            add(JLabel("Participant:"), gbc)
-
-            gbc.gridx = 1
-            gbc.weightx = 1.0
-            add(participantDropdown, gbc)
-            alignmentX = Component.LEFT_ALIGNMENT
         }
 
-        val detailsPanel = JPanel(GridBagLayout()).apply {
-            border = BorderFactory.createTitledBorder("Event Details")
-            val gbc = GridBagConstraints().apply {
-                insets = Insets(3, 4, 3, 4)
-                anchor = GridBagConstraints.WEST
-                fill = GridBagConstraints.HORIZONTAL
-            }
-
-            gbc.gridx = 0
-            gbc.gridy = 0
-            gbc.weightx = 0.0
-            add(JLabel("Name:"), gbc)
-
-            gbc.gridx = 1
-            gbc.gridwidth = 3
-            gbc.weightx = 1.0
-            add(eventNameValue, gbc)
-
-            gbc.gridy = 1
-            gbc.gridx = 0
-            gbc.gridwidth = 1
-            gbc.weightx = 0.0
-            add(JLabel("Date:"), gbc)
-
-            gbc.gridx = 1
-            gbc.weightx = 0.5
-            add(eventDateValue, gbc)
-
-            gbc.gridx = 2
-            gbc.weightx = 0.0
-            add(JLabel("Time:"), gbc)
-
-            gbc.gridx = 3
-            gbc.weightx = 0.5
-            add(eventTimeValue, gbc)
-
-            gbc.gridy = 2
-            gbc.gridx = 0
-            gbc.weightx = 0.0
-            add(JLabel("Venue:"), gbc)
-
-            gbc.gridx = 1
-            gbc.weightx = 0.5
-            add(eventVenueValue, gbc)
-
-            gbc.gridx = 2
-            gbc.weightx = 0.0
-            add(JLabel("Spaces:"), gbc)
-
-            gbc.gridx = 3
-            gbc.weightx = 0.5
-            add(eventCapacityValue, gbc)
-
-            val descriptionScroll = JScrollPane(eventDescriptionArea).apply {
-                preferredSize = Dimension(0, 60)
-                border = BorderFactory.createEmptyBorder()
-                horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
-                verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED
-            }
-
-            gbc.gridy = 3
-            gbc.gridx = 0
-            gbc.gridwidth = 1
-            gbc.weightx = 0.0
-            gbc.weighty = 0.0
-            add(JLabel("Description:"), gbc)
-
-            gbc.gridx = 1
-            gbc.gridwidth = 3
-            gbc.weightx = 1.0
-            gbc.fill = GridBagConstraints.BOTH
-            add(descriptionScroll, gbc)
-            alignmentX = Component.LEFT_ALIGNMENT
-        }
-
-        val filterPanel = JPanel(FlowLayout(FlowLayout.LEFT, 8, 5)).apply {
-            border = BorderFactory.createTitledBorder("View Registrations")
-            add(JLabel("View by:"))
-            add(filterModeDropdown)
-            add(filterValueLabel)
-            add(filterValueDropdown)
-            alignmentX = Component.LEFT_ALIGNMENT
-        }
-
-        val topPanel = JPanel().apply {
-            layout = BoxLayout(this, BoxLayout.Y_AXIS)
-            border = BorderFactory.createEmptyBorder(0, 0, 0, 0)
-            add(form)
-            add(Box.createVerticalStrut(8))
-            add(detailsPanel)
-            add(Box.createVerticalStrut(8))
-            add(filterPanel)
-            alignmentX = Component.LEFT_ALIGNMENT
-        }
-
-        val tableScrollPane = JScrollPane(table).apply {
-            border = BorderFactory.createTitledBorder("Registrations")
-            alignmentX = Component.LEFT_ALIGNMENT
-            preferredSize = Dimension(0, 260)
-        }
-
-        val contentPanel = JPanel().apply {
-            layout = BoxLayout(this, BoxLayout.Y_AXIS)
-            border = BorderFactory.createEmptyBorder(10, 10, 10, 10)
-            add(topPanel)
-            add(Box.createVerticalStrut(12))
-            add(tableScrollPane)
-        }
-
-        val outerScroll = JScrollPane(contentPanel).apply {
-            border = BorderFactory.createEmptyBorder()
-            horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
-            verticalScrollBar.unitIncrement = 16
-        }
-
-        add(toolbar, BorderLayout.NORTH)
-        add(outerScroll, BorderLayout.CENTER)
+        add(UiTheme.wrapWithScroll(content), BorderLayout.CENTER)
 
         registerButton.addActionListener { register() }
         deleteButton.addActionListener { deleteReg() }
@@ -255,14 +147,168 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
         refreshAll()
     }
 
+    private fun buildFormCard(): JComponent {
+        val card = UiTheme.createCard(GridBagLayout()).apply {
+            border = BorderFactory.createCompoundBorder(
+                BorderFactory.createTitledBorder(BorderFactory.createLineBorder(UiTheme.highlightColor), "Register Participant"),
+                javax.swing.border.EmptyBorder(16, 16, 16, 16)
+            )
+        }
+        val gbc = GridBagConstraints().apply {
+            insets = Insets(6, 6, 6, 6)
+            anchor = GridBagConstraints.WEST
+            fill = GridBagConstraints.HORIZONTAL
+        }
+
+        var row = 0
+        fun addRow(label: String, component: JComponent) {
+            gbc.gridx = 0
+            gbc.gridy = row
+            gbc.weightx = 0.0
+            card.add(UiTheme.styleLabel(JLabel(label), bold = true), gbc)
+
+            gbc.gridx = 1
+            gbc.weightx = 1.0
+            card.add(component, gbc)
+            row++
+        }
+
+        eventDropdown.preferredSize = Dimension(280, 30)
+        firstNameField.preferredSize = Dimension(220, 30)
+        lastNameField.preferredSize = Dimension(220, 30)
+        dobField.spinner.preferredSize = Dimension(160, 30)
+        phoneField.preferredSize = Dimension(220, 30)
+        emailField.preferredSize = Dimension(260, 30)
+
+        addRow("Event:", eventDropdown)
+        addRow("First Name:", firstNameField)
+        addRow("Last Name:", lastNameField)
+        addRow("Date of Birth:", dobField.component)
+        addRow("Phone (11 digits):", phoneField)
+        addRow("Email:", emailField)
+
+        val buttonRow = UiTheme.createButtonRow(registerButton, deleteButton, refreshButton)
+        gbc.gridx = 0
+        gbc.gridy = row
+        gbc.gridwidth = 2
+        card.add(buttonRow, gbc)
+
+        return card
+    }
+
+    private fun buildEventDetailsCard(): JComponent {
+        val card = UiTheme.createCard(GridBagLayout()).apply {
+            border = BorderFactory.createCompoundBorder(
+                BorderFactory.createTitledBorder(BorderFactory.createLineBorder(UiTheme.highlightColor), "Event Details"),
+                javax.swing.border.EmptyBorder(14, 14, 14, 14)
+            )
+        }
+        val gbc = GridBagConstraints().apply {
+            insets = Insets(4, 4, 4, 4)
+            anchor = GridBagConstraints.WEST
+            fill = GridBagConstraints.HORIZONTAL
+        }
+
+        var row = 0
+        fun addRow(label: String, component: JComponent, fill: Int = GridBagConstraints.HORIZONTAL) {
+            gbc.gridx = 0
+            gbc.gridy = row
+            gbc.weightx = 0.0
+            gbc.fill = GridBagConstraints.HORIZONTAL
+            card.add(UiTheme.styleLabel(JLabel(label), bold = true), gbc)
+
+            gbc.gridx = 1
+            gbc.weightx = 1.0
+            gbc.fill = fill
+            card.add(component, gbc)
+            row++
+        }
+
+        listOf(eventNameValue, eventDateValue, eventTimeValue, eventVenueValue, eventCapacityValue).forEach {
+            it.foreground = UiTheme.textColor
+        }
+
+        addRow("Name:", eventNameValue)
+        addRow("Date:", eventDateValue)
+        addRow("Time:", eventTimeValue)
+        addRow("Venue:", eventVenueValue)
+        addRow("Capacity:", eventCapacityValue)
+
+        val descriptionScroll = javax.swing.JScrollPane(eventDescriptionArea).apply {
+            preferredSize = Dimension(0, 80)
+            border = BorderFactory.createEmptyBorder()
+            horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
+            verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED
+        }
+        addRow("Description:", descriptionScroll, GridBagConstraints.BOTH)
+
+        return card
+    }
+
+    private fun buildFilterCard(): JComponent {
+        val card = UiTheme.createCard(FlowLayout(FlowLayout.LEFT, 12, 6)).apply {
+            border = BorderFactory.createCompoundBorder(
+                BorderFactory.createTitledBorder(BorderFactory.createLineBorder(UiTheme.highlightColor), "View Registrations"),
+                javax.swing.border.EmptyBorder(12, 12, 12, 12)
+            )
+        }
+        filterModeDropdown.preferredSize = Dimension(200, 30)
+        filterValueDropdown.preferredSize = Dimension(200, 30)
+        card.add(UiTheme.styleLabel(JLabel("View by:"), bold = true))
+        UiTheme.styleLabel(filterValueLabel, bold = true)
+        card.add(filterModeDropdown)
+        card.add(filterValueLabel)
+        card.add(filterValueDropdown)
+        return card
+    }
+
+    private fun buildTableCard(): JComponent {
+        UiTheme.styleTable(table)
+        val card = UiTheme.createCard(BorderLayout(10, 10)).apply {
+            border = BorderFactory.createCompoundBorder(
+                BorderFactory.createTitledBorder(BorderFactory.createLineBorder(UiTheme.highlightColor), "Registrations"),
+                javax.swing.border.EmptyBorder(12, 12, 12, 12)
+            )
+        }
+        val tableScrollPane = javax.swing.JScrollPane(table).apply {
+            border = BorderFactory.createEmptyBorder()
+            preferredSize = Dimension(0, 280)
+            background = UiTheme.cardColor
+            viewport.background = java.awt.Color.WHITE
+        }
+        card.add(tableScrollPane, BorderLayout.CENTER)
+        return card
+    }
+
     private fun register() {
         val eventOption = eventDropdown.selectedItem as? EventOption ?: run {
             showMessage("Select an event with capacity remaining.")
             return
         }
-        val participantOption = participantDropdown.selectedItem as? ParticipantOption ?: run {
-            showMessage("Select a participant to register.")
-            return
+
+        val firstName = firstNameField.text.trim()
+        val lastName = lastNameField.text.trim()
+        val phone = phoneField.text.trim()
+        val email = emailField.text.trim()
+        val dob = dobField.date
+
+        when {
+            firstName.isBlank() || lastName.isBlank() -> {
+                showMessage("Please provide the participant's first and last name.")
+                return
+            }
+            dob.isAfter(LocalDate.now()) -> {
+                showMessage("Date of birth cannot be in the future.")
+                return
+            }
+            !phoneRegex.matches(phone) -> {
+                JOptionPane.showMessageDialog(this, "Phone number must contain exactly 11 digits.", "Invalid Phone", JOptionPane.ERROR_MESSAGE)
+                return
+            }
+            !emailRegex.matches(email) -> {
+                JOptionPane.showMessageDialog(this, "Please enter a valid email address.", "Invalid Email", JOptionPane.ERROR_MESSAGE)
+                return
+            }
         }
 
         val remaining = AppContext.registrationService.remainingCapacity(eventOption.event)
@@ -271,7 +317,6 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
             refreshAll()
             return
         }
-
         if (eventOption.hasStarted) {
             showMessage("This event has already started. You cannot register for it anymore.")
             refreshAll()
@@ -279,14 +324,22 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
         }
 
         try {
+            val participant = AppContext.participantService.upsertParticipant(
+                firstName,
+                lastName,
+                dob,
+                phone,
+                email
+            )
             AppContext.registrationService.registerForScheduledEvent(
                 eventOption.schedule,
-                participantOption.participant.id
+                participant.id
             )
             JOptionPane.showMessageDialog(
                 this,
-                "✅ Registered ${participantOption.participant.firstName} ${participantOption.participant.lastName} for ${eventOption.event.title}"
+                "✅ Registered ${participant.firstName} ${participant.lastName} for ${eventOption.event.title}"
             )
+            clearParticipantForm()
             refreshAll()
             onDataChanged?.invoke()
         } catch (e: Exception) {
@@ -295,6 +348,14 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
             }
             JOptionPane.showMessageDialog(this, e.message ?: "Unable to register")
         }
+    }
+
+    private fun clearParticipantForm() {
+        firstNameField.text = ""
+        lastNameField.text = ""
+        dobField.date = LocalDate.now().minusYears(18)
+        phoneField.text = ""
+        emailField.text = ""
     }
 
     private fun deleteReg() {
@@ -322,11 +383,9 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
 
     private fun refreshDropdowns() {
         val eventModel = DefaultComboBoxModel<EventOption>()
-        val participantModel = DefaultComboBoxModel<ParticipantOption>()
 
         val events = AppContext.eventService.reload()
         val schedules = AppContext.scheduledEventService.reload()
-        val participants = AppContext.participantService.reload()
         val venues = AppContext.venueService.reload()
         val venueMap = venues.associateBy { it.id }
         val eventMap = events.associateBy { it.id }
@@ -344,12 +403,7 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
             .sortedWith(compareBy({ it.schedule.date }, { it.schedule.startTime }, { it.event.title }))
             .forEach { eventModel.addElement(it) }
 
-        participants
-            .sortedWith(compareBy({ it.firstName }, { it.lastName }))
-            .forEach { participantModel.addElement(ParticipantOption(it)) }
-
         eventDropdown.model = eventModel
-        participantDropdown.model = participantModel
 
         if (eventModel.size == 0) {
             eventDropdown.isEnabled = false
@@ -362,14 +416,6 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
             eventDropdown.selectedIndex = 0
             registerButton.isEnabled = true
             registerButton.toolTipText = null
-        }
-
-        if (participantModel.size == 0) {
-            participantDropdown.isEnabled = false
-            participantDropdown.toolTipText = "Add participants before registering"
-        } else {
-            participantDropdown.isEnabled = true
-            participantDropdown.toolTipText = null
         }
 
         updateEventDetails()
