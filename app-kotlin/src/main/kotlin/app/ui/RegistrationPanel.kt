@@ -93,24 +93,107 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
         toolbar.add(deleteButton)
         toolbar.add(refreshButton)
 
-        val form = JPanel(GridLayout(0, 2, 5, 5))
-        form.border = BorderFactory.createTitledBorder("Register Participant")
-        form.add(JLabel("Event:")); form.add(eventDropdown)
-        form.add(JLabel("Participant:")); form.add(participantDropdown)
+        val form = JPanel(GridBagLayout()).apply {
+            border = BorderFactory.createTitledBorder("Register Participant")
+            val gbc = GridBagConstraints().apply {
+                insets = Insets(4, 4, 4, 4)
+                anchor = GridBagConstraints.WEST
+                fill = GridBagConstraints.HORIZONTAL
+                weightx = 0.0
+            }
 
-        val detailsPanel = JPanel(GridLayout(0, 2, 5, 5)).apply {
+            gbc.gridx = 0
+            gbc.gridy = 0
+            add(JLabel("Event:"), gbc)
+
+            gbc.gridx = 1
+            gbc.weightx = 1.0
+            add(eventDropdown, gbc)
+
+            gbc.gridx = 0
+            gbc.gridy = 1
+            gbc.weightx = 0.0
+            add(JLabel("Participant:"), gbc)
+
+            gbc.gridx = 1
+            gbc.weightx = 1.0
+            add(participantDropdown, gbc)
+            alignmentX = Component.LEFT_ALIGNMENT
+        }
+
+        val detailsPanel = JPanel(GridBagLayout()).apply {
             border = BorderFactory.createTitledBorder("Event Details")
-            add(JLabel("Name:")); add(eventNameValue)
-            add(JLabel("Date:")); add(eventDateValue)
-            add(JLabel("Time:")); add(eventTimeValue)
-            add(JLabel("Venue:")); add(eventVenueValue)
-            add(JLabel("Spaces Available:")); add(eventCapacityValue)
-            add(JLabel("Description:")); add(JScrollPane(eventDescriptionArea).apply {
-                preferredSize = Dimension(0, 70)
+            val gbc = GridBagConstraints().apply {
+                insets = Insets(3, 4, 3, 4)
+                anchor = GridBagConstraints.WEST
+                fill = GridBagConstraints.HORIZONTAL
+            }
+
+            gbc.gridx = 0
+            gbc.gridy = 0
+            gbc.weightx = 0.0
+            add(JLabel("Name:"), gbc)
+
+            gbc.gridx = 1
+            gbc.gridwidth = 3
+            gbc.weightx = 1.0
+            add(eventNameValue, gbc)
+
+            gbc.gridy = 1
+            gbc.gridx = 0
+            gbc.gridwidth = 1
+            gbc.weightx = 0.0
+            add(JLabel("Date:"), gbc)
+
+            gbc.gridx = 1
+            gbc.weightx = 0.5
+            add(eventDateValue, gbc)
+
+            gbc.gridx = 2
+            gbc.weightx = 0.0
+            add(JLabel("Time:"), gbc)
+
+            gbc.gridx = 3
+            gbc.weightx = 0.5
+            add(eventTimeValue, gbc)
+
+            gbc.gridy = 2
+            gbc.gridx = 0
+            gbc.weightx = 0.0
+            add(JLabel("Venue:"), gbc)
+
+            gbc.gridx = 1
+            gbc.weightx = 0.5
+            add(eventVenueValue, gbc)
+
+            gbc.gridx = 2
+            gbc.weightx = 0.0
+            add(JLabel("Spaces:"), gbc)
+
+            gbc.gridx = 3
+            gbc.weightx = 0.5
+            add(eventCapacityValue, gbc)
+
+            val descriptionScroll = JScrollPane(eventDescriptionArea).apply {
+                preferredSize = Dimension(0, 60)
                 border = BorderFactory.createEmptyBorder()
                 horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
                 verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED
-            })
+            }
+
+            gbc.gridy = 3
+            gbc.gridx = 0
+            gbc.gridwidth = 1
+            gbc.weightx = 0.0
+            gbc.weighty = 0.0
+            add(JLabel("Description:"), gbc)
+
+            gbc.gridx = 1
+            gbc.gridwidth = 3
+            gbc.weightx = 1.0
+            gbc.fill = GridBagConstraints.BOTH
+            add(descriptionScroll, gbc)
+            alignmentX = Component.LEFT_ALIGNMENT
         }
 
         val filterPanel = JPanel(FlowLayout(FlowLayout.LEFT, 8, 5)).apply {
@@ -119,25 +202,42 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
             add(filterModeDropdown)
             add(filterValueLabel)
             add(filterValueDropdown)
+            alignmentX = Component.LEFT_ALIGNMENT
         }
 
-        val topPanel = JPanel()
-        topPanel.layout = BoxLayout(topPanel, BoxLayout.Y_AXIS)
-        topPanel.add(form)
-        topPanel.add(Box.createVerticalStrut(8))
-        topPanel.add(detailsPanel)
-        topPanel.add(Box.createVerticalStrut(8))
-        topPanel.add(filterPanel)
+        val topPanel = JPanel().apply {
+            layout = BoxLayout(this, BoxLayout.Y_AXIS)
+            border = BorderFactory.createEmptyBorder(0, 0, 0, 0)
+            add(form)
+            add(Box.createVerticalStrut(8))
+            add(detailsPanel)
+            add(Box.createVerticalStrut(8))
+            add(filterPanel)
+            alignmentX = Component.LEFT_ALIGNMENT
+        }
 
-        val scrollPane = JScrollPane(table)
-        scrollPane.border = BorderFactory.createTitledBorder("Registrations")
+        val tableScrollPane = JScrollPane(table).apply {
+            border = BorderFactory.createTitledBorder("Registrations")
+            alignmentX = Component.LEFT_ALIGNMENT
+            preferredSize = Dimension(0, 260)
+        }
 
-        val contentPanel = JPanel(BorderLayout(10, 10))
-        contentPanel.add(topPanel, BorderLayout.NORTH)
-        contentPanel.add(scrollPane, BorderLayout.CENTER)
+        val contentPanel = JPanel().apply {
+            layout = BoxLayout(this, BoxLayout.Y_AXIS)
+            border = BorderFactory.createEmptyBorder(10, 10, 10, 10)
+            add(topPanel)
+            add(Box.createVerticalStrut(12))
+            add(tableScrollPane)
+        }
+
+        val outerScroll = JScrollPane(contentPanel).apply {
+            border = BorderFactory.createEmptyBorder()
+            horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
+            verticalScrollBar.unitIncrement = 16
+        }
 
         add(toolbar, BorderLayout.NORTH)
-        add(contentPanel, BorderLayout.CENTER)
+        add(outerScroll, BorderLayout.CENTER)
 
         registerButton.addActionListener { register() }
         deleteButton.addActionListener { deleteReg() }
@@ -178,7 +278,10 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
         }
 
         try {
-            AppContext.registrationService.register(eventOption.event.id, participantOption.participant.id)
+            AppContext.registrationService.registerForScheduledEvent(
+                eventOption.schedule,
+                participantOption.participant.id
+            )
             JOptionPane.showMessageDialog(
                 this,
                 "✅ Registered ${participantOption.participant.firstName} ${participantOption.participant.lastName} for ${eventOption.event.title}"
@@ -186,6 +289,9 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
             refreshAll()
             onDataChanged?.invoke()
         } catch (e: Exception) {
+            if (e is IllegalStateException) {
+                refreshAll()
+            }
             JOptionPane.showMessageDialog(this, e.message ?: "Unable to register")
         }
     }
