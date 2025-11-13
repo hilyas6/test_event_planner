@@ -24,7 +24,7 @@ fun main() {
     SwingUtilities.invokeLater {
         try { UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName()) } catch (_: Exception) {}
 
-        val frame = JFrame("Event Planner (Kotlin + Scala)")
+        val frame = JFrame("Event Planner")
         frame.defaultCloseOperation = JFrame.EXIT_ON_CLOSE
         frame.setSize(1200, 720)
         frame.setLocationRelativeTo(null)
