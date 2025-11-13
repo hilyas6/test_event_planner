@@ -155,9 +155,9 @@ class VenueFormPanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(B
 
     private fun addVenue() {
         try {
-            val name = nameField.text.trim()
-            val city = cityField.text.trim()
-            val capacity = (capacityField.value as Int)
+            val name = venueNameField.text.trim()
+            val city = venueLocationField.text.trim()
+            val capacity = (venueCapacitySpinner.value as Int)
 
             if (name.isEmpty() || city.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "Please fill all fields")
