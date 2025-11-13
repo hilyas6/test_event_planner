@@ -4,6 +4,7 @@ import app.AppContext
 import javax.swing.*
 import javax.swing.table.DefaultTableModel
 import java.awt.*
+import java.awt.GraphicsEnvironment
 import java.time.format.DateTimeFormatter
 
 class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(BorderLayout()) {
@@ -256,23 +257,23 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
 
     private fun register() {
         val eventOption = eventDropdown.selectedItem as? EventOption ?: run {
-            JOptionPane.showMessageDialog(this, "Select an event with capacity remaining.")
+            showMessage("Select an event with capacity remaining.")
             return
         }
         val participantOption = participantDropdown.selectedItem as? ParticipantOption ?: run {
-            JOptionPane.showMessageDialog(this, "Select a participant to register.")
+            showMessage("Select a participant to register.")
             return
         }
 
         val remaining = AppContext.registrationService.remainingCapacity(eventOption.event)
         if (remaining <= 0) {
-            JOptionPane.showMessageDialog(this, "This event is currently full. Choose another event or try again later.")
+            showMessage("This event is currently full. Choose another event or try again later.")
             refreshAll()
             return
         }
 
         if (eventOption.hasStarted) {
-            JOptionPane.showMessageDialog(this, "This event has already started. You cannot register for it anymore.")
+            showMessage("This event has already started. You cannot register for it anymore.")
             refreshAll()
             return
         }
@@ -304,6 +305,14 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
         AppContext.registrationService.deleteRegistrationById(id)
         refreshAll()
         onDataChanged?.invoke()
+    }
+
+    private fun showMessage(message: String) {
+        if (GraphicsEnvironment.isHeadless()) {
+            println(message)
+        } else {
+            JOptionPane.showMessageDialog(this, message)
+        }
     }
 
     private fun refreshAll() {
