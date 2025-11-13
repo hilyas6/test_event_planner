@@ -28,25 +28,21 @@ class RegistrationService(
         schedule: core.model.ScheduledEvent,
         participantId: String
     ): Registration {
-        val confirmedSchedule = scheduledEventRepo.allScheduledEvents()
-            .find { it.eventId == schedule.eventId }
-            ?: throw IllegalStateException("Event does not have a confirmed schedule")
-
-        val event = eventRepo.eventById(confirmedSchedule.eventId)
+        val event = eventRepo.eventById(schedule.eventId)
             ?: throw IllegalArgumentException("Event not found")
         val participant = participantRepo.participantById(participantId)
             ?: throw IllegalArgumentException("Participant not found")
 
         val now = LocalDateTime.now()
-        val scheduleStart = LocalDateTime.of(confirmedSchedule.date, confirmedSchedule.startTime)
-        val scheduleEnd = LocalDateTime.of(confirmedSchedule.date, confirmedSchedule.endTime)
+        val scheduleStart = LocalDateTime.of(schedule.date, schedule.startTime)
+        val scheduleEnd = LocalDateTime.of(schedule.date, schedule.endTime)
 
         require(scheduleEnd.isAfter(scheduleStart)) { "Schedule has invalid time range" }
         if (scheduleStart.isBefore(now)) {
             throw IllegalStateException("Cannot register for past schedules")
         }
 
-        val existingForEvent = registrationRepo.registrationsFor(confirmedSchedule.eventId)
+        val existingForEvent = registrationRepo.registrationsFor(schedule.eventId)
         if (existingForEvent.any { it.participantId == participantId }) {
             throw IllegalStateException("Participant is already registered")
         }
@@ -76,12 +72,12 @@ class RegistrationService(
                 else -> null
             }
 
-            if (otherStart != null && otherEnd != null && otherStart.toLocalDate() == confirmedSchedule.date) {
+            if (otherStart != null && otherEnd != null && otherStart.toLocalDate() == schedule.date) {
                 val overlap = timesOverlap(
                     otherStart.toLocalTime(),
                     otherEnd.toLocalTime(),
-                    confirmedSchedule.startTime,
-                    confirmedSchedule.endTime
+                    schedule.startTime,
+                    schedule.endTime
                 )
                 if (overlap) {
                     val title = otherEvent?.title ?: "Event ${reg.eventId}"
@@ -101,7 +97,7 @@ class RegistrationService(
 
         val registration = Registration(
             id = UUID.randomUUID().toString(),
-            eventId = confirmedSchedule.eventId,
+            eventId = schedule.eventId,
             participantId = participantId,
             registeredAt = now
         )
