@@ -289,6 +289,9 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
             refreshAll()
             onDataChanged?.invoke()
         } catch (e: Exception) {
+            if (e is IllegalStateException) {
+                refreshAll()
+            }
             JOptionPane.showMessageDialog(this, e.message ?: "Unable to register")
         }
     }
