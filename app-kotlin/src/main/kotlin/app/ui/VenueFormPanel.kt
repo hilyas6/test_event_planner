@@ -22,6 +22,10 @@ class VenueFormPanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(B
     private val capacityField = JSpinner(SpinnerNumberModel(10, 1, 10000, 1))
     private val cityField = JTextField(12)
 
+    private val nameField = JTextField(12)
+    private val capacityField = JSpinner(SpinnerNumberModel(10, 1, 10000, 1))
+    private val cityField = JTextField(12)
+
     private val addButton = JButton("Add")
     private val deleteButton = JButton("Delete")
     private val refreshButton = JButton("Refresh")
@@ -75,20 +79,12 @@ class VenueFormPanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(B
         addRow("Location:", cityField)
 
         val buttonPanel = JPanel(FlowLayout(FlowLayout.CENTER, 15, 0)).apply {
-            background = buttonColor
-            border = BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(1, 0, 0, 0, buttonColor.darker()),
-                EmptyBorder(12, 0, 12, 0)
-            )
-            isOpaque = true
+            background = cardColor
+            border = EmptyBorder(10, 0, 0, 0)
         }
 
-        val buttons = mapOf(
-            addButton to "➕",
-            deleteButton to "🗑",
-            refreshButton to "🔄"
-        )
-        buttons.forEach { (button, glyph) ->
+        val buttons = listOf(addButton, deleteButton, refreshButton)
+        buttons.forEach { button ->
             button.background = buttonColor
             button.foreground = Color.WHITE
             button.isOpaque = true
@@ -98,9 +94,6 @@ class VenueFormPanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(B
             )
             button.font = button.font.deriveFont(Font.BOLD, 14f)
             button.cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
-            button.icon = createGlyphIcon(glyph, highlightColor)
-            button.horizontalTextPosition = SwingConstants.RIGHT
-            button.iconTextGap = 10
             buttonPanel.add(button)
         }
 
