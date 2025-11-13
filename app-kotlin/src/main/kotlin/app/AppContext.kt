@@ -16,6 +16,6 @@ object AppContext {
     val eventService = EventService(store)
     val venueService = VenueService(store)
     val participantService = ParticipantService(store)
-    val registrationService = RegistrationService(store, store, store, store)
+    val registrationService = RegistrationService(store, store, store, store, store)
     val scheduledEventService = ScheduledEventService(store, eventService)
 }

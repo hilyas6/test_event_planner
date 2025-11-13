@@ -4,6 +4,7 @@ import core.model.Registration
 import core.repo.EventRepository
 import core.repo.ParticipantRepository
 import core.repo.RegistrationRepository
+import core.repo.ScheduledEventRepository
 import core.repo.VenueRepository
 import java.time.LocalDateTime
 import java.util.*
@@ -12,26 +13,40 @@ class RegistrationService(
     private val eventRepo: EventRepository,
     private val venueRepo: VenueRepository,
     private val participantRepo: ParticipantRepository,
-    private val registrationRepo: RegistrationRepository
+    private val registrationRepo: RegistrationRepository,
+    private val scheduledEventRepo: ScheduledEventRepository
 ) {
     fun all(): List<Registration> = registrationRepo.allRegistrations()
 
     fun register(eventId: String, participantId: String): Registration {
-        val event = eventRepo.eventById(eventId)
+        val schedule = scheduledEventRepo.allScheduledEvents().find { it.eventId == eventId }
+            ?: throw IllegalStateException("Event does not have a confirmed schedule")
+        return registerForScheduledEvent(schedule, participantId)
+    }
+
+    fun registerForScheduledEvent(
+        schedule: core.model.ScheduledEvent,
+        participantId: String
+    ): Registration {
+        val confirmedSchedule = scheduledEventRepo.allScheduledEvents()
+            .find { it.eventId == schedule.eventId }
+            ?: throw IllegalStateException("Event does not have a confirmed schedule")
+
+        val event = eventRepo.eventById(confirmedSchedule.eventId)
             ?: throw IllegalArgumentException("Event not found")
         val participant = participantRepo.participantById(participantId)
             ?: throw IllegalArgumentException("Participant not found")
 
         val now = LocalDateTime.now()
-        val eventStart = LocalDateTime.of(event.date, event.startTime)
-        val eventEnd = LocalDateTime.of(event.date, event.endTime)
+        val scheduleStart = LocalDateTime.of(confirmedSchedule.date, confirmedSchedule.startTime)
+        val scheduleEnd = LocalDateTime.of(confirmedSchedule.date, confirmedSchedule.endTime)
 
-        require(eventEnd.isAfter(eventStart)) { "Event has invalid time range" }
-        if (eventStart.isBefore(now)) {
-            throw IllegalStateException("Cannot register for past events")
+        require(scheduleEnd.isAfter(scheduleStart)) { "Schedule has invalid time range" }
+        if (scheduleStart.isBefore(now)) {
+            throw IllegalStateException("Cannot register for past schedules")
         }
 
-        val existingForEvent = registrationRepo.registrationsFor(eventId)
+        val existingForEvent = registrationRepo.registrationsFor(confirmedSchedule.eventId)
         if (existingForEvent.any { it.participantId == participantId }) {
             throw IllegalStateException("Participant is already registered")
         }
@@ -42,21 +57,51 @@ class RegistrationService(
             throw IllegalStateException("Event is at full capacity")
         }
 
+        val scheduledByEvent = scheduledEventRepo.allScheduledEvents().associateBy { it.eventId }
         val participantRegistrations = registrationRepo.allRegistrations()
             .filter { it.participantId == participantId }
-            .mapNotNull { reg -> eventRepo.eventById(reg.eventId)?.let { reg to it } }
 
-        val conflicts = participantRegistrations.filter { (_, otherEvent) ->
-            otherEvent.date == event.date && timesOverlap(otherEvent.startTime, otherEvent.endTime, event.startTime, event.endTime)
+        val conflicts = participantRegistrations.mapNotNull { reg ->
+            val otherEvent = eventRepo.eventById(reg.eventId)
+            val otherSchedule = scheduledByEvent[reg.eventId]
+
+            val otherStart = when {
+                otherSchedule != null -> LocalDateTime.of(otherSchedule.date, otherSchedule.startTime)
+                otherEvent != null -> LocalDateTime.of(otherEvent.date, otherEvent.startTime)
+                else -> null
+            }
+            val otherEnd = when {
+                otherSchedule != null -> LocalDateTime.of(otherSchedule.date, otherSchedule.endTime)
+                otherEvent != null -> LocalDateTime.of(otherEvent.date, otherEvent.endTime)
+                else -> null
+            }
+
+            if (otherStart != null && otherEnd != null && otherStart.toLocalDate() == confirmedSchedule.date) {
+                val overlap = timesOverlap(
+                    otherStart.toLocalTime(),
+                    otherEnd.toLocalTime(),
+                    confirmedSchedule.startTime,
+                    confirmedSchedule.endTime
+                )
+                if (overlap) {
+                    val title = otherEvent?.title ?: "Event ${reg.eventId}"
+                    title
+                } else {
+                    null
+                }
+            } else {
+                null
+            }
         }
+
         if (conflicts.isNotEmpty()) {
-            val conflictTitles = conflicts.joinToString { it.second.title }
+            val conflictTitles = conflicts.joinToString()
             throw IllegalStateException("Participant has a conflicting event: $conflictTitles")
         }
 
         val registration = Registration(
             id = UUID.randomUUID().toString(),
-            eventId = eventId,
+            eventId = confirmedSchedule.eventId,
             participantId = participantId,
             registeredAt = now
         )
