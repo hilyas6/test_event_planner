@@ -7,6 +7,7 @@ import java.time.LocalTime
 import java.util.*
 
 class EventService(private val repo: EventRepository) {
+
     fun all(): List<Event> = repo.allEvents()
 
     fun addEvent(
@@ -26,7 +27,8 @@ class EventService(private val repo: EventRepository) {
         require(expectedSize > 0) { "Capacity must be positive" }
         require(priority > 0) { "Priority must be positive" }
 
-        val normalisedPriority = priority.coerceIn(1, 10)
+        val normalizedPriority = priority.coerceIn(1, 10)
+
         val event = Event(
             id = UUID.randomUUID().toString(),
             title = title.trim(),
@@ -38,8 +40,10 @@ class EventService(private val repo: EventRepository) {
             expectedSize = expectedSize,
             organiserName = organiserName.trim(),
             organiserEmail = organiserEmail.trim(),
-            priority = normalisedPriority
+            priority = normalizedPriority,
+            venueId = null
         )
+
         repo.saveEvent(event)
     }
 
@@ -62,19 +66,21 @@ class EventService(private val repo: EventRepository) {
         venueId: String?
     ) {
         require(endTime.isAfter(startTime)) { "End time must be after start time" }
+
         val current = repo.eventById(eventId) ?: return
+
         val updated = current.copy(
             date = date,
             startTime = startTime,
             endTime = endTime,
             venueId = venueId ?: current.venueId
         )
+
         repo.saveEvent(updated)
     }
+
     fun reload(): List<Event> {
         val store = repo as? core.repo.file.JsonFileStore
         return store?.reloadEvents() ?: repo.allEvents()
     }
-
 }
-

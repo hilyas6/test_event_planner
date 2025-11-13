@@ -24,12 +24,14 @@ class EventFormPanel : JPanel(BorderLayout()) {
     private val deleteButton = JButton("🗑️ Delete Selected")
     private val refreshButton = JButton("↻ Refresh List")
 
+    // Keep the codex (extended) table model
     private val tableModel = object : DefaultTableModel(
         arrayOf("ID", "Title", "Date", "Start", "End", "Expected Size", "Priority"),
         0
     ) {
         override fun isCellEditable(row: Int, column: Int) = false
     }
+
     private val eventTable = JTable(tableModel)
 
     init {
@@ -77,6 +79,8 @@ class EventFormPanel : JPanel(BorderLayout()) {
         val tableScroll = JScrollPane(eventTable)
         eventTable.fillsViewportHeight = true
         eventTable.autoResizeMode = JTable.AUTO_RESIZE_ALL_COLUMNS
+
+        // Hide the ID column from view
         eventTable.columnModel.getColumn(0).apply {
             minWidth = 0
             maxWidth = 0
@@ -97,28 +101,29 @@ class EventFormPanel : JPanel(BorderLayout()) {
 
     private fun loadEvents() {
         tableModel.rowCount = 0
-        val events = AppContext.eventService.reload()
-        events
-            .sortedWith(compareBy({ it.date }, { it.startTime }, { it.title }))
+        val events = AppContext.eventService.reload()  // codex branch
+
+        events.sortedWith(compareBy({ it.date }, { it.startTime }, { it.title }))
             .forEach {
                 tableModel.addRow(
                     arrayOf(
                         it.id,
                         it.title,
-                    it.date,
-                    it.startTime,
-                    it.endTime,
-                    it.expectedSize,
-                    it.priority
+                        it.date,
+                        it.startTime,
+                        it.endTime,
+                        it.expectedSize,
+                        it.priority
+                    )
                 )
-            )
-        }
+            }
     }
 
     private fun onAddEvent() {
         try {
-            val date = (datePicker.value as java.util.Date)
-                .toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+            val date = (datePicker.value as java.util.Date).toInstant()
+                .atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+
             val start = LocalTime.parse(startTimeBox.selectedItem as String)
             val end = LocalTime.parse(endTimeBox.selectedItem as String)
 
@@ -129,10 +134,10 @@ class EventFormPanel : JPanel(BorderLayout()) {
                 date = date,
                 startTime = start,
                 endTime = end,
-                expectedSize = (expectedSizeField.value as Int),
+                expectedSize = expectedSizeField.value as Int,
                 organiserName = organiserNameField.text,
                 organiserEmail = organiserEmailField.text,
-                priority = (prioritySpinner.value as Int)
+                priority = prioritySpinner.value as Int
             )
 
             JOptionPane.showMessageDialog(this, "✅ Event added successfully!")
@@ -150,6 +155,7 @@ class EventFormPanel : JPanel(BorderLayout()) {
             JOptionPane.showMessageDialog(this, "Select an event to delete.")
             return
         }
+
         val eventId = tableModel.getValueAt(selectedRow, 0) as String
         AppContext.eventService.deleteEventById(eventId)
         loadEvents()
