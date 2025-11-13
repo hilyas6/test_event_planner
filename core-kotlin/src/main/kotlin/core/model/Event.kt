@@ -9,9 +9,14 @@ import java.time.LocalTime
 data class Event(
     val id: String,
     val title: String,
+    val description: String = "",
+    val category: String = "",
     @Contextual val date: LocalDate,
     @Contextual val startTime: LocalTime,
     @Contextual val endTime: LocalTime,
     val expectedSize: Int,
+    val organiserName: String = "",
+    val organiserEmail: String = "",
+    val priority: Int = 1,
     val venueId: String? = null
 )

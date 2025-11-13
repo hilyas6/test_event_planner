@@ -2,8 +2,6 @@ package app.ui
 
 import algo.Scheduler
 import algo.SlotFinder
-import algo.SlotSuggestion
-import algo.ScheduleResult
 import app.AppContext
 import java.awt.*
 import java.time.LocalDate
@@ -14,17 +12,17 @@ class SchedulePanel : JPanel(BorderLayout()) {
 
     // Inputs
     private val plannedSizeSpinner = JSpinner(SpinnerNumberModel(50, 1, 100000, 1))
-    private val earliestDateSpinner = JSpinner(SpinnerDateModel())
+    private val earliestDateSpinner = JSpinner(SpinnerDateModel(java.util.Date(), null, null, java.util.Calendar.DAY_OF_MONTH))
     private val refreshButton = JButton("↻ Refresh")
     private val findSlotButton = JButton("🔍 Find Slot")
     private val buildScheduleButton = JButton("🧩 Build Schedule")
     private val clearButton = JButton("🗑 Clear")
 
     // Tables
-    private val slotTableModel = DefaultTableModel(arrayOf("Venue", "Date", "Start Time"), 0)
+    private val slotTableModel = DefaultTableModel(arrayOf("Venue", "Date", "Start", "End", "Confidence", "Notes"), 0)
     private val slotTable = JTable(slotTableModel)
 
-    private val scheduleTableModel = DefaultTableModel(arrayOf("Event", "Date", "Start–End", "Assigned Venue"), 0)
+    private val scheduleTableModel = DefaultTableModel(arrayOf("Event", "Date", "Start", "End", "Venue", "Confidence", "Notes"), 0)
     private val scheduleTable = JTable(scheduleTableModel)
 
     init {
@@ -88,18 +86,35 @@ class SchedulePanel : JPanel(BorderLayout()) {
                 .toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate()
 
             // Pull current data from services
-            val events = java.util.ArrayList(AppContext.eventService.all())
-            val venues = java.util.ArrayList(AppContext.venueService.all())
+            val eventsList = AppContext.eventService.reload()
+            val venuesList = AppContext.venueService.reload()
+            val registrationsList = AppContext.registrationService.reload()
+            val participantsList = AppContext.participantService.reload()
 
-            val suggestionOpt: java.util.Optional<SlotSuggestion> =
-                SlotFinder.findFirstAvailable(events, venues, planned, earliest)
+            val events = java.util.ArrayList(eventsList)
+            val venues = java.util.ArrayList(venuesList)
+            val registrations = java.util.ArrayList(registrationsList)
+            val participants = java.util.ArrayList(participantsList)
 
-            if (suggestionOpt.isPresent) {
-                val suggestion = suggestionOpt.get()
-                val venueName = AppContext.venueService.all().find { it.id == suggestion.venueId }?.name ?: "(unknown)"
-                slotTableModel.addRow(arrayOf(venueName, suggestion.date.toString(), suggestion.startTime.toString()))
-            } else {
+            val suggestions = SlotFinder.proposeSlots(events, venues, registrations, participants, planned, earliest)
+
+            if (suggestions.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "No suitable venue found from $earliest for size $planned.")
+            } else {
+                val venueMap = venuesList.associateBy { it.id }
+                suggestions.forEach { suggestion ->
+                    val venueName = venueMap[suggestion.venueId]?.name ?: "(unassigned venue)"
+                    slotTableModel.addRow(
+                        arrayOf(
+                            venueName,
+                            suggestion.date.toString(),
+                            suggestion.startTime.toString(),
+                            suggestion.endTime.toString(),
+                            "${"%.0f".format(suggestion.confidence * 100)}%",
+                            suggestion.note
+                        )
+                    )
+                }
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -111,33 +126,75 @@ class SchedulePanel : JPanel(BorderLayout()) {
         try {
             clearScheduleTable()
 
-            val events = java.util.ArrayList(AppContext.eventService.all())
-            val venues = java.util.ArrayList(AppContext.venueService.all())
+            val eventsList = AppContext.eventService.reload()
+            val venuesList = AppContext.venueService.reload()
+            val registrationsList = AppContext.registrationService.reload()
 
-            val result = Scheduler.buildConflictFreeSchedule(events, venues)
+            val events = java.util.ArrayList(eventsList)
+            val venues = java.util.ArrayList(venuesList)
+            val registrations = java.util.ArrayList(registrationsList)
 
+            val preferenceScores = mutableMapOf<String, Double>()
+            val registrationsByEvent = registrationsList.groupBy { it.eventId }
 
-            // Map results to nice rows
-            val evMap = AppContext.eventService.all().associateBy { it.id }
-            val vnMap = AppContext.venueService.all().associateBy { it.id }
+            eventsList.forEach { event ->
+                val registeredCount = registrationsByEvent[event.id]?.size ?: 0
+                val basePriority = if (event.priority > 0) event.priority else event.expectedSize
+                val interestBoost = registeredCount * 2.0
+                val demandRatio = if (event.expectedSize > 0) registeredCount.toDouble() / event.expectedSize else 0.0
+                val score = basePriority + interestBoost + demandRatio
+                preferenceScores[event.id] = score
+            }
 
-            result.forEach { r ->
-                val e = evMap[r.eventId]
-                val v = vnMap[r.venueId]
-                if (e != null && v != null) {
-                    scheduleTableModel.addRow(
-                        arrayOf(
-                            e.title,
-                            e.date.toString(),
-                            "${e.startTime}–${e.endTime}",
-                            v.name
-                        )
+            val result = Scheduler.buildOptimizedSchedule(events, venues, registrations, preferenceScores)
+
+            val evMap = eventsList.associateBy { it.id }.toMutableMap()
+            val vnMap = venuesList.associateBy { it.id }
+
+            var appliedCount = 0
+            result.filter { it.scheduled }.forEach { scheduled ->
+                val event = evMap[scheduled.eventId] ?: return@forEach
+                val assignedVenue = scheduled.venueId.takeIf { it.isNotBlank() }
+                val updated = event.copy(
+                    date = scheduled.assignedDate,
+                    startTime = scheduled.startTime,
+                    endTime = scheduled.endTime,
+                    venueId = assignedVenue ?: event.venueId
+                )
+                if (updated != event) {
+                    AppContext.eventService.rescheduleEvent(
+                        eventId = scheduled.eventId,
+                        date = scheduled.assignedDate,
+                        startTime = scheduled.startTime,
+                        endTime = scheduled.endTime,
+                        venueId = assignedVenue
                     )
+                    evMap[scheduled.eventId] = updated
+                    appliedCount++
                 }
             }
 
-            if (result.isEmpty())  {
-                JOptionPane.showMessageDialog(this, "No conflict-free assignment possible with current data.")
+            result.forEach { r ->
+                val event = evMap[r.eventId]
+                val venueName = vnMap[r.venueId]?.name ?: if (r.scheduled) "(venue TBD)" else "(not scheduled)"
+                val title = event?.title ?: r.eventId
+                scheduleTableModel.addRow(
+                    arrayOf(
+                        title,
+                        r.assignedDate.toString(),
+                        r.startTime.toString(),
+                        r.endTime.toString(),
+                        venueName,
+                        "${"%.0f".format(r.confidence * 100)}%",
+                        r.note
+                    )
+                )
+            }
+
+            if (result.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "No schedule could be generated with current data.")
+            } else if (appliedCount > 0) {
+                JOptionPane.showMessageDialog(this, "Applied schedule updates to $appliedCount event(s).")
             }
         } catch (e: Exception) {
             e.printStackTrace()

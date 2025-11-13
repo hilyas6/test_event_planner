@@ -16,24 +16,60 @@ class RegistrationService(
 ) {
     fun all(): List<Registration> = registrationRepo.allRegistrations()
 
-    fun register(eventId: String, participantId: String) {
+    fun register(eventId: String, participantId: String): Registration {
         val event = eventRepo.eventById(eventId)
+            ?: throw IllegalArgumentException("Event not found")
         val participant = participantRepo.participantById(participantId)
-        val venue = event?.venueId?.let { venueRepo.venueById(it) }
+            ?: throw IllegalArgumentException("Participant not found")
 
-        if (event == null || participant == null || venue == null) {
-            println("⚠️ Registration failed: missing data for event=$eventId, participant=$participantId")
-            return
+        val now = LocalDateTime.now()
+        val eventStart = LocalDateTime.of(event.date, event.startTime)
+        val eventEnd = LocalDateTime.of(event.date, event.endTime)
+
+        require(eventEnd.isAfter(eventStart)) { "Event has invalid time range" }
+        if (eventStart.isBefore(now)) {
+            throw IllegalStateException("Cannot register for past events")
+        }
+
+        val existingForEvent = registrationRepo.registrationsFor(eventId)
+        if (existingForEvent.any { it.participantId == participantId }) {
+            throw IllegalStateException("Participant is already registered")
+        }
+
+        val venueCapacity = event.venueId?.let { venueRepo.venueById(it)?.capacity }
+        val capacityCandidates = mutableListOf(event.expectedSize)
+        if (venueCapacity != null) capacityCandidates += venueCapacity
+        val capacityLimit = capacityCandidates.minOrNull() ?: event.expectedSize
+        val capacityRemaining = capacityLimit - existingForEvent.size
+        if (capacityRemaining <= 0) {
+            throw IllegalStateException("Event is at full capacity")
+        }
+
+        val participantRegistrations = registrationRepo.allRegistrations()
+            .filter { it.participantId == participantId }
+            .mapNotNull { reg -> eventRepo.eventById(reg.eventId)?.let { reg to it } }
+
+        val conflicts = participantRegistrations.filter { (_, otherEvent) ->
+            otherEvent.date == event.date && timesOverlap(otherEvent.startTime, otherEvent.endTime, event.startTime, event.endTime)
+        }
+        if (conflicts.isNotEmpty()) {
+            val conflictTitles = conflicts.joinToString { it.second.title }
+            throw IllegalStateException("Participant has a conflicting event: $conflictTitles")
         }
 
         val registration = Registration(
             id = UUID.randomUUID().toString(),
             eventId = eventId,
             participantId = participantId,
-            registeredAt = LocalDateTime.now()
+            registeredAt = now
         )
         registrationRepo.saveRegistration(registration)
         println("✅ Registered ${participant.firstName} ${participant.lastName} for ${event.title}")
+        return registration
+    }
+
+    private fun timesOverlap(aStart: java.time.LocalTime, aEnd: java.time.LocalTime, bStart: java.time.LocalTime, bEnd: java.time.LocalTime): Boolean {
+        return aStart < bEnd && bStart < aEnd
     }
 
     fun registrationsFor(eventId: String): List<Registration> =
@@ -42,6 +78,15 @@ class RegistrationService(
     fun deleteRegistrationById(id: String) {
         val updated = all().filterNot { it.id == id }
         registrationRepo.saveAllRegistrations(updated)
+    }
+    fun occupancyFor(eventId: String): Int = registrationRepo.registrationsFor(eventId).size
+
+    fun remainingCapacity(event: core.model.Event): Int {
+        val venueCapacity = event.venueId?.let { venueRepo.venueById(it)?.capacity }
+        val capacityCandidates = mutableListOf(event.expectedSize)
+        if (venueCapacity != null) capacityCandidates += venueCapacity
+        val capacityLimit = capacityCandidates.minOrNull() ?: event.expectedSize
+        return (capacityLimit - occupancyFor(event.id)).coerceAtLeast(0)
     }
     fun reload(): List<core.model.Registration> {
         val store = registrationRepo as? core.repo.file.JsonFileStore
