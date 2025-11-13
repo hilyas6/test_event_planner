@@ -36,10 +36,7 @@ class RegistrationService(
             throw IllegalStateException("Participant is already registered")
         }
 
-        val venueCapacity = event.venueId?.let { venueRepo.venueById(it)?.capacity }
-        val capacityCandidates = mutableListOf(event.expectedSize)
-        if (venueCapacity != null) capacityCandidates += venueCapacity
-        val capacityLimit = capacityCandidates.minOrNull() ?: event.expectedSize
+        val capacityLimit = capacityLimit(event)
         val capacityRemaining = capacityLimit - existingForEvent.size
         if (capacityRemaining <= 0) {
             throw IllegalStateException("Event is at full capacity")
@@ -81,13 +78,19 @@ class RegistrationService(
     }
     fun occupancyFor(eventId: String): Int = registrationRepo.registrationsFor(eventId).size
 
-    fun remainingCapacity(event: core.model.Event): Int {
+    fun remainingCapacity(event: core.model.Event): Int =
+        (capacityLimit(event) - occupancyFor(event.id)).coerceAtLeast(0)
+
+    fun capacityLimit(event: core.model.Event): Int {
         val venueCapacity = event.venueId?.let { venueRepo.venueById(it)?.capacity }
         val capacityCandidates = mutableListOf(event.expectedSize)
         if (venueCapacity != null) capacityCandidates += venueCapacity
-        val capacityLimit = capacityCandidates.minOrNull() ?: event.expectedSize
-        return (capacityLimit - occupancyFor(event.id)).coerceAtLeast(0)
+        return capacityCandidates.minOrNull() ?: event.expectedSize
     }
+
+    fun capacityLimit(eventId: String): Int? =
+        eventRepo.eventById(eventId)?.let { capacityLimit(it) }
+
     fun reload(): List<core.model.Registration> {
         val store = registrationRepo as? core.repo.file.JsonFileStore
         return store?.reloadRegistrations() ?: registrationRepo.allRegistrations()
