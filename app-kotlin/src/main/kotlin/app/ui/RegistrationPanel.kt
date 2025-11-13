@@ -48,7 +48,8 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
 
     private data class RegistrationRow(
         val registration: core.model.Registration,
-        val participantName: String,
+        val participant: core.model.Participant,
+        val participantFullName: String,
         val event: core.model.Event,
         val schedule: core.model.ScheduledEvent?,
         val venue: core.model.Venue?
@@ -80,7 +81,20 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
     private val filterValueLabel = JLabel("Value:")
 
     private val tableModel = object : DefaultTableModel(
-        arrayOf("ID", "Participant", "Event", "Date", "Start", "End", "Venue", "Registered At"),
+        arrayOf(
+            "ID",
+            "First Name",
+            "Last Name",
+            "Date of Birth",
+            "Phone",
+            "Email",
+            "Event",
+            "Date",
+            "Start",
+            "End",
+            "Venue",
+            "Registered At"
+        ),
         0
     ) {
         override fun isCellEditable(row: Int, column: Int) = false
@@ -433,14 +447,18 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
             val event = events[reg.eventId] ?: return@mapNotNull null
             val schedule = schedules[reg.eventId]
             val venue = event.venueId?.let { venues[it] }
+            val fullName = listOf(participant.firstName, participant.lastName)
+                .filter { it.isNotBlank() }
+                .joinToString(" ")
             RegistrationRow(
                 registration = reg,
-                participantName = "${participant.firstName} ${participant.lastName}",
+                participant = participant,
+                participantFullName = fullName.ifBlank { participant.firstName.ifBlank { participant.lastName } },
                 event = event,
                 schedule = schedule,
                 venue = venue
             )
-        }.sortedWith(compareBy({ it.event.date }, { it.event.startTime }, { it.participantName }))
+        }.sortedWith(compareBy({ it.event.date }, { it.event.startTime }, { it.participantFullName }))
 
         updateFilterValues()
     }
@@ -540,9 +558,13 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
             val endText = schedule?.endTime ?: row.event.endTime
             val venueName = row.venue?.let { "${it.name} (${it.city})" } ?: "Venue TBD"
             tableModel.addRow(
-                arrayOf(
+                arrayOf<Any?>(
                     row.registration.id,
-                    row.participantName,
+                    row.participant.firstName,
+                    row.participant.lastName,
+                    row.participant.dateOfBirth.format(dateFormatter),
+                    row.participant.phone,
+                    row.participant.email,
                     row.event.title,
                     dateText,
                     startText,

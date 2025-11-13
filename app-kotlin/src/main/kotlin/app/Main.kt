@@ -1,10 +1,10 @@
 package app
 
 import app.ui.EventFormPanel
-import app.ui.ParticipantPanel
 import app.ui.RegistrationPanel
 import app.ui.SchedulePanel
 import app.ui.VenueFormPanel
+import app.ui.UiTheme
 import java.awt.BorderLayout
 import java.io.PrintWriter
 import java.io.StringWriter
@@ -29,10 +29,14 @@ fun main() {
         frame.setSize(1200, 720)
         frame.setLocationRelativeTo(null)
 
-        val tabs = JTabbedPane()
+        val tabs = JTabbedPane().apply {
+            background = UiTheme.backgroundColor
+            foreground = UiTheme.textColor
+            border = BorderFactory.createMatteBorder(0, 0, 1, 0, UiTheme.highlightColor)
+            tabLayoutPolicy = JTabbedPane.SCROLL_TAB_LAYOUT
+        }
         tabs.add("Venues", safePanel("Venues") { VenueFormPanel() })
         tabs.add("Events", safePanel("Events") { EventFormPanel() })
-        tabs.add("Participants", safePanel("Participants") { ParticipantPanel() })
         tabs.add("Scheduling", safePanel("Scheduling") { SchedulePanel() })
         tabs.add("Registration", safePanel("Registration") { RegistrationPanel() })
 
