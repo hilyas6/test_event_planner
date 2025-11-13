@@ -283,7 +283,8 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
                 eventOption.schedule,
                 participantOption.participant.id
             )
-            showMessage(
+            JOptionPane.showMessageDialog(
+                this,
                 "✅ Registered ${participantOption.participant.firstName} ${participantOption.participant.lastName} for ${eventOption.event.title}"
             )
             refreshAll()
@@ -292,7 +293,7 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
             if (e is IllegalStateException) {
                 refreshAll()
             }
-            showMessage(e.message ?: "Unable to register")
+            JOptionPane.showMessageDialog(this, e.message ?: "Unable to register")
         }
     }
 
