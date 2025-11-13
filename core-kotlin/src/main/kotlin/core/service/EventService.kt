@@ -18,13 +18,15 @@ class EventService(private val repo: EventRepository) {
         endTime: LocalTime,
         expectedSize: Int,
         organiserName: String,
-        organiserEmail: String
+        organiserEmail: String,
+        priority: Int
     ) {
         require(title.isNotBlank()) { "Title is required" }
         require(endTime.isAfter(startTime)) { "End time must be after start time" }
         require(expectedSize > 0) { "Capacity must be positive" }
+        require(priority > 0) { "Priority must be positive" }
 
-        val priority = expectedSize.coerceAtLeast(1)
+        val normalisedPriority = priority.coerceIn(1, 10)
         val event = Event(
             id = UUID.randomUUID().toString(),
             title = title.trim(),
@@ -36,7 +38,7 @@ class EventService(private val repo: EventRepository) {
             expectedSize = expectedSize,
             organiserName = organiserName.trim(),
             organiserEmail = organiserEmail.trim(),
-            priority = priority
+            priority = normalisedPriority
         )
         repo.saveEvent(event)
     }
@@ -50,6 +52,24 @@ class EventService(private val repo: EventRepository) {
 
     fun replaceAll(events: List<Event>) {
         repo.saveAllEvents(events)
+    }
+
+    fun rescheduleEvent(
+        eventId: String,
+        date: LocalDate,
+        startTime: LocalTime,
+        endTime: LocalTime,
+        venueId: String?
+    ) {
+        require(endTime.isAfter(startTime)) { "End time must be after start time" }
+        val current = repo.eventById(eventId) ?: return
+        val updated = current.copy(
+            date = date,
+            startTime = startTime,
+            endTime = endTime,
+            venueId = venueId ?: current.venueId
+        )
+        repo.saveEvent(updated)
     }
     fun reload(): List<Event> {
         val store = repo as? core.repo.file.JsonFileStore

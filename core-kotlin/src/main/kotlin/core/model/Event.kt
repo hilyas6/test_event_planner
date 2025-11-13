@@ -17,6 +17,6 @@ data class Event(
     val expectedSize: Int,
     val organiserName: String = "",
     val organiserEmail: String = "",
-    val priority: Int = 0,
+    val priority: Int = 1,
     val venueId: String? = null
 )

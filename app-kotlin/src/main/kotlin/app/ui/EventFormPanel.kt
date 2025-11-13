@@ -16,6 +16,7 @@ class EventFormPanel : JPanel(BorderLayout()) {
     private val startTimeBox = JComboBox((6..22).map { "%02d:00".format(it) }.toTypedArray())
     private val endTimeBox = JComboBox((7..23).map { "%02d:00".format(it) }.toTypedArray())
     private val expectedSizeField = JSpinner(SpinnerNumberModel(50, 1, 10000, 1))
+    private val prioritySpinner = JSpinner(SpinnerNumberModel(3, 1, 10, 1))
     private val organiserNameField = JTextField(25)
     private val organiserEmailField = JTextField(25)
 
@@ -23,10 +24,12 @@ class EventFormPanel : JPanel(BorderLayout()) {
     private val deleteButton = JButton("🗑️ Delete Selected")
     private val refreshButton = JButton("↻ Refresh List")
 
-    private val tableModel = DefaultTableModel(
-        arrayOf("Title", "Date", "Start", "End", "Expected Size"),
+    private val tableModel = object : DefaultTableModel(
+        arrayOf("ID", "Title", "Date", "Start", "End", "Expected Size", "Priority"),
         0
-    )
+    ) {
+        override fun isCellEditable(row: Int, column: Int) = false
+    }
     private val eventTable = JTable(tableModel)
 
     init {
@@ -62,6 +65,7 @@ class EventFormPanel : JPanel(BorderLayout()) {
         addRow("Start Time:", startTimeBox)
         addRow("End Time:", endTimeBox)
         addRow("Expected Size:", expectedSizeField)
+        addRow("Priority (1-10):", prioritySpinner)
         addRow("Organiser Name:", organiserNameField)
         addRow("Organiser Email:", organiserEmailField)
 
@@ -73,6 +77,12 @@ class EventFormPanel : JPanel(BorderLayout()) {
         val tableScroll = JScrollPane(eventTable)
         eventTable.fillsViewportHeight = true
         eventTable.autoResizeMode = JTable.AUTO_RESIZE_ALL_COLUMNS
+        eventTable.columnModel.getColumn(0).apply {
+            minWidth = 0
+            maxWidth = 0
+            width = 0
+            preferredWidth = 0
+        }
 
         add(formPanel, BorderLayout.NORTH)
         add(tableScroll, BorderLayout.CENTER)
@@ -87,10 +97,20 @@ class EventFormPanel : JPanel(BorderLayout()) {
 
     private fun loadEvents() {
         tableModel.rowCount = 0
-        val events = AppContext.eventService.all()
-        events.forEach {
-            tableModel.addRow(
-                arrayOf(it.title, it.date, it.startTime, it.endTime, it.expectedSize)
+        val events = AppContext.eventService.reload()
+        events
+            .sortedWith(compareBy({ it.date }, { it.startTime }, { it.title }))
+            .forEach {
+                tableModel.addRow(
+                    arrayOf(
+                        it.id,
+                        it.title,
+                    it.date,
+                    it.startTime,
+                    it.endTime,
+                    it.expectedSize,
+                    it.priority
+                )
             )
         }
     }
@@ -111,7 +131,8 @@ class EventFormPanel : JPanel(BorderLayout()) {
                 endTime = end,
                 expectedSize = (expectedSizeField.value as Int),
                 organiserName = organiserNameField.text,
-                organiserEmail = organiserEmailField.text
+                organiserEmail = organiserEmailField.text,
+                priority = (prioritySpinner.value as Int)
             )
 
             JOptionPane.showMessageDialog(this, "✅ Event added successfully!")
@@ -129,14 +150,9 @@ class EventFormPanel : JPanel(BorderLayout()) {
             JOptionPane.showMessageDialog(this, "Select an event to delete.")
             return
         }
-        val title = tableModel.getValueAt(selectedRow, 0) as String
-        val events = AppContext.eventService.all().toMutableList()
-        val toDelete = events.find { it.title == title }
-        if (toDelete != null) {
-            events.remove(toDelete)
-            AppContext.eventService.replaceAll(events)
-            loadEvents()
-        }
+        val eventId = tableModel.getValueAt(selectedRow, 0) as String
+        AppContext.eventService.deleteEventById(eventId)
+        loadEvents()
     }
 
     private fun clearForm() {
@@ -146,5 +162,6 @@ class EventFormPanel : JPanel(BorderLayout()) {
         expectedSizeField.value = 50
         organiserNameField.text = ""
         organiserEmailField.text = ""
+        prioritySpinner.value = 3
     }
 }

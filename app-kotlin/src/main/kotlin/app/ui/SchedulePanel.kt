@@ -86,17 +86,22 @@ class SchedulePanel : JPanel(BorderLayout()) {
                 .toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate()
 
             // Pull current data from services
-            val events = java.util.ArrayList(AppContext.eventService.all())
-            val venues = java.util.ArrayList(AppContext.venueService.all())
-            val registrations = java.util.ArrayList(AppContext.registrationService.all())
-            val participants = java.util.ArrayList(AppContext.participantService.all())
+            val eventsList = AppContext.eventService.reload()
+            val venuesList = AppContext.venueService.reload()
+            val registrationsList = AppContext.registrationService.reload()
+            val participantsList = AppContext.participantService.reload()
+
+            val events = java.util.ArrayList(eventsList)
+            val venues = java.util.ArrayList(venuesList)
+            val registrations = java.util.ArrayList(registrationsList)
+            val participants = java.util.ArrayList(participantsList)
 
             val suggestions = SlotFinder.proposeSlots(events, venues, registrations, participants, planned, earliest)
 
             if (suggestions.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "No suitable venue found from $earliest for size $planned.")
             } else {
-                val venueMap = AppContext.venueService.all().associateBy { it.id }
+                val venueMap = venuesList.associateBy { it.id }
                 suggestions.forEach { suggestion ->
                     val venueName = venueMap[suggestion.venueId]?.name ?: "(unassigned venue)"
                     slotTableModel.addRow(
@@ -121,14 +126,18 @@ class SchedulePanel : JPanel(BorderLayout()) {
         try {
             clearScheduleTable()
 
-            val events = java.util.ArrayList(AppContext.eventService.all())
-            val venues = java.util.ArrayList(AppContext.venueService.all())
-            val registrations = java.util.ArrayList(AppContext.registrationService.all())
+            val eventsList = AppContext.eventService.reload()
+            val venuesList = AppContext.venueService.reload()
+            val registrationsList = AppContext.registrationService.reload()
+
+            val events = java.util.ArrayList(eventsList)
+            val venues = java.util.ArrayList(venuesList)
+            val registrations = java.util.ArrayList(registrationsList)
 
             val preferenceScores = mutableMapOf<String, Double>()
-            val registrationsByEvent = registrations.groupBy { it.eventId }
+            val registrationsByEvent = registrationsList.groupBy { it.eventId }
 
-            AppContext.eventService.all().forEach { event ->
+            eventsList.forEach { event ->
                 val registeredCount = registrationsByEvent[event.id]?.size ?: 0
                 val basePriority = if (event.priority > 0) event.priority else event.expectedSize
                 val interestBoost = registeredCount * 2.0
@@ -139,8 +148,31 @@ class SchedulePanel : JPanel(BorderLayout()) {
 
             val result = Scheduler.buildOptimizedSchedule(events, venues, registrations, preferenceScores)
 
-            val evMap = AppContext.eventService.all().associateBy { it.id }
-            val vnMap = AppContext.venueService.all().associateBy { it.id }
+            val evMap = eventsList.associateBy { it.id }.toMutableMap()
+            val vnMap = venuesList.associateBy { it.id }
+
+            var appliedCount = 0
+            result.filter { it.scheduled }.forEach { scheduled ->
+                val event = evMap[scheduled.eventId] ?: return@forEach
+                val assignedVenue = scheduled.venueId.takeIf { it.isNotBlank() }
+                val updated = event.copy(
+                    date = scheduled.assignedDate,
+                    startTime = scheduled.startTime,
+                    endTime = scheduled.endTime,
+                    venueId = assignedVenue ?: event.venueId
+                )
+                if (updated != event) {
+                    AppContext.eventService.rescheduleEvent(
+                        eventId = scheduled.eventId,
+                        date = scheduled.assignedDate,
+                        startTime = scheduled.startTime,
+                        endTime = scheduled.endTime,
+                        venueId = assignedVenue
+                    )
+                    evMap[scheduled.eventId] = updated
+                    appliedCount++
+                }
+            }
 
             result.forEach { r ->
                 val event = evMap[r.eventId]
@@ -161,6 +193,8 @@ class SchedulePanel : JPanel(BorderLayout()) {
 
             if (result.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "No schedule could be generated with current data.")
+            } else if (appliedCount > 0) {
+                JOptionPane.showMessageDialog(this, "Applied schedule updates to $appliedCount event(s).")
             }
         } catch (e: Exception) {
             e.printStackTrace()
