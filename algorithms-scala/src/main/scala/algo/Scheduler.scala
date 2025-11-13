@@ -8,8 +8,8 @@ import scala.jdk.CollectionConverters._
 object Scheduler {
 
   private val DayStart: LocalTime = LocalTime.of(7, 0)
-  private val DayEnd: LocalTime = LocalTime.of(22, 0)
-  private val StepMinutes: Long = 15L
+  private val DayEnd: LocalTime = LocalTime.of(23, 0)
+  private val SearchWindowDays: Int = 60
 
   /** Build an availability-aware schedule that honours preferences and priorities. */
   def buildOptimizedSchedule(events: java.util.List[Event],
@@ -51,42 +51,45 @@ object Scheduler {
     sortedEvents.foreach { event =>
       val interestedParticipants = participantsByEvent(event.getId)
       val durationMinutes = math.max(15L, java.time.Duration.between(event.getStartTime, event.getEndTime).toMinutes)
+      val requestedStart = event.getStartTime
+      val requestedEnd = requestedStart.plusMinutes(durationMinutes)
+      val today = LocalDate.now()
+      val baselineDate = if (event.getDate.isAfter(today)) event.getDate else today
       val candidateVenues = preferredVenues(vns, event)
 
-      val assignmentOpt = candidateVenues.to(LazyList).flatMap { venue =>
-        val dayKey = (venue.getId, event.getDate)
-        val venueBusy = venueUsage.getOrElse(dayKey, Nil)
+      if (!slotWithinDay(requestedStart, durationMinutes)) {
+        results += new ScheduleResult(event.getId, "", event.getDate, requestedStart, requestedEnd, 0.0, "Requested time outside scheduling hours", false)
+      } else {
+        val searchDates = (0 until SearchWindowDays).map(offset => baselineDate.plusDays(offset.toLong))
 
-        val candidateStarts = generateStartTimes(event.getStartTime, durationMinutes)
+        val assignmentOpt = candidateVenues.to(LazyList).flatMap { venue =>
+          searchDates.to(LazyList).collectFirst {
+            case date if venueAvailable(venueUsage.getOrElse((venue.getId, date), Nil), requestedStart, durationMinutes) &&
+              participantsAvailable(pid => participantUsage.getOrElse(pid, Nil), interestedParticipants, date, requestedStart, durationMinutes) =>
 
-        candidateStarts.to(LazyList).collectFirst {
-          case start if slotWithinDay(start, durationMinutes) &&
-            venueAvailable(venueBusy, start, durationMinutes) &&
-            participantsAvailable(pid => participantUsage.getOrElse(pid, Nil), interestedParticipants, event.getDate, start, durationMinutes) =>
-
-            val end = start.plusMinutes(durationMinutes)
-            val conflicts = countConflicts(pid => participantUsage.getOrElse(pid, Nil), interestedParticipants, event.getDate, start, durationMinutes)
-            val confidence = computeConfidence(event, venue, interestedParticipants.size, conflicts)
-            val note = buildNote(event, start, conflicts)
-            (venue, start, end, confidence, note)
-        }
-      }.headOption
-
-      assignmentOpt match {
-        case Some((venue, start, end, confidence, note)) =>
-          results += new ScheduleResult(event.getId, venue.getId, event.getDate, start, end, confidence, note, true)
-          val dayKey = (venue.getId, event.getDate)
-          val existing = venueUsage.getOrElse(dayKey, Nil)
-          venueUsage.update(dayKey, (start, end) :: existing)
-          interestedParticipants.foreach { pid =>
-            val updated = (event.getDate, start, end, event.getId) :: participantUsage.getOrElse(pid, Nil)
-            participantUsage.update(pid, updated)
+              val conflicts = countConflicts(pid => participantUsage.getOrElse(pid, Nil), interestedParticipants, date, requestedStart, durationMinutes)
+              val confidence = computeConfidence(event, venue, interestedParticipants.size, conflicts)
+              val note = buildNote(event, date, conflicts)
+              (venue, date, requestedStart, requestedEnd, confidence, note)
           }
-        case None =>
-          val message =
-            if (candidateVenues.isEmpty) "No venue meets the capacity requirement"
-            else "Conflicts detected for all venues"
-          results += new ScheduleResult(event.getId, "", event.getDate, event.getStartTime, event.getEndTime, 0.0, message, false)
+        }.headOption
+
+        assignmentOpt match {
+          case Some((venue, date, start, end, confidence, note)) =>
+            results += new ScheduleResult(event.getId, venue.getId, date, start, end, confidence, note, true)
+            val dayKey = (venue.getId, date)
+            val existing = venueUsage.getOrElse(dayKey, Nil)
+            venueUsage.update(dayKey, (start, end) :: existing)
+            interestedParticipants.foreach { pid =>
+              val updated = (date, start, end, event.getId) :: participantUsage.getOrElse(pid, Nil)
+              participantUsage.update(pid, updated)
+            }
+          case None =>
+            val message =
+              if (candidateVenues.isEmpty) "No venue meets the capacity requirement"
+              else "No available venue found within the search window"
+            results += new ScheduleResult(event.getId, "", event.getDate, requestedStart, requestedEnd, 0.0, message, false)
+        }
       }
     }
 
@@ -151,9 +154,9 @@ object Scheduler {
     (availabilityScore * 0.7 + (1 - capacityScore) * 0.3).max(0.0)
   }
 
-  private def buildNote(event: Event, start: LocalTime, conflicts: Int): String = {
+  private def buildNote(event: Event, scheduledDate: LocalDate, conflicts: Int): String = {
     val adjustments = scala.collection.mutable.ArrayBuffer[String]()
-    if (start != event.getStartTime) adjustments += s"Adjusted start to $start"
+    if (scheduledDate != event.getDate) adjustments += s"Moved to $scheduledDate"
     if (conflicts > 0) adjustments += s"$conflicts participant conflict(s) avoided"
     if (adjustments.isEmpty) "Scheduled as requested" else adjustments.mkString("; ")
   }
@@ -161,15 +164,4 @@ object Scheduler {
   private def timesOverlap(aStart: LocalTime, aEnd: LocalTime, bStart: LocalTime, bEnd: LocalTime): Boolean =
     aStart.isBefore(bEnd) && bStart.isBefore(aEnd)
 
-  private def generateStartTimes(preferred: LocalTime, durationMinutes: Long): List[LocalTime] = {
-    val forward = Iterator.iterate(preferred)(_.plusMinutes(StepMinutes))
-      .takeWhile(t => !t.plusMinutes(durationMinutes).isAfter(DayEnd))
-      .toList
-    val backward = Iterator.iterate(preferred.minusMinutes(StepMinutes))(_.minusMinutes(StepMinutes))
-      .takeWhile { t =>
-        t.isBefore(preferred) && !t.isBefore(DayStart) && !t.plusMinutes(durationMinutes).isAfter(DayEnd)
-      }
-      .toList
-    (forward ++ backward).distinct
-  }
 }

@@ -7,10 +7,10 @@ import scala.jdk.CollectionConverters._
 object SlotFinder {
 
   private val SearchDays = 21
-  private val DayStart = LocalTime.of(8, 0)
-  private val DayEnd = LocalTime.of(21, 0)
+  private val DayStart = LocalTime.of(7, 0)
+  private val DayEnd = LocalTime.of(23, 0)
   private val DefaultDurationMinutes = 60L
-  private val StepMinutes = 30L
+  private val StepMinutes = 15L
 
   /**
     * Propose the best slots for a meeting considering venue availability and participant calendars.
@@ -78,25 +78,17 @@ object SlotFinder {
     }
 
     val sorted = suggestions.toList
-      .sortBy(s => (-s.getConfidence(), s.getDate(), s.getStartTime()))
+      .sortBy(s => (s.getDate(), s.getStartTime(), Option(s.getVenueId()).getOrElse("")))
 
-    val diversified = scala.collection.mutable.ListBuffer.empty[SlotSuggestion]
-    val seenVenues = scala.collection.mutable.Set.empty[String]
-
+    val earliestByVenue = scala.collection.mutable.LinkedHashMap.empty[String, SlotSuggestion]
     sorted.foreach { s =>
       val venueKey = Option(s.getVenueId()).getOrElse("")
-      if (!seenVenues.contains(venueKey)) {
-        diversified += s
-        seenVenues += venueKey
+      if (!earliestByVenue.contains(venueKey)) {
+        earliestByVenue.put(venueKey, s)
       }
     }
 
-    val prioritized = diversified.toList
-    val remaining = sorted.filterNot(prioritized.toSet)
-
-    (prioritized ++ remaining)
-      .take(10)
-      .asJava
+    earliestByVenue.values.take(3).toList.asJava
   }
 
   private def averageEventDuration(events: List[Event]): Option[Duration] = {
