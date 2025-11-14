@@ -26,7 +26,16 @@ class JsonFileStore :
     RegistrationRepository,
     ScheduledEventRepository {
 
-    private val baseDir = Paths.get(System.getProperty("user.dir"), "data")
+    private val baseDir = determineBaseDir()
+
+    private fun determineBaseDir(): Path {
+        val workingDir = Paths.get(System.getProperty("user.dir")).toAbsolutePath()
+        val existing = generateSequence(workingDir) { it.parent }
+            .map { it.resolve("data") }
+            .firstOrNull { Files.isDirectory(it) }
+
+        return (existing ?: workingDir.resolve("data")).normalize()
+    }
 
     // Serializer for Java time types
     private val serializersModule = SerializersModule {
