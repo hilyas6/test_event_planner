@@ -46,6 +46,60 @@ object UiTheme {
         border = EmptyBorder(12, 0, 0, 0)
     }
 
+    fun applyToolbarTheme(tabbedPane: JTabbedPane) {
+        tabbedPane.background = backgroundColor
+        tabbedPane.isOpaque = false
+        tabbedPane.border = BorderFactory.createCompoundBorder(
+            BorderFactory.createMatteBorder(0, 0, 1, 0, highlightColor),
+            EmptyBorder(16, 20, 8, 20)
+        )
+
+        val buttons = mutableListOf<JToggleButton>()
+
+        repeat(tabbedPane.tabCount) { index ->
+            val title = tabbedPane.getTitleAt(index)
+            val button = JToggleButton(title).apply {
+                isFocusPainted = false
+                isContentAreaFilled = true
+                isOpaque = true
+                cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
+                font = font.deriveFont(Font.BOLD, 14f)
+                margin = Insets(0, 0, 0, 0)
+                horizontalAlignment = SwingConstants.CENTER
+                border = EmptyBorder(0, 0, 0, 0)
+                addActionListener {
+                    val currentIndex = tabbedPane.indexOfTabComponent(this)
+                    if (currentIndex >= 0) {
+                        tabbedPane.selectedIndex = currentIndex
+                    }
+                }
+            }
+            tabbedPane.setTabComponentAt(index, button)
+            buttons += button
+        }
+
+        fun refreshSelection() {
+            buttons.forEach { button ->
+                val idx = tabbedPane.indexOfTabComponent(button)
+                if (idx < 0) return@forEach
+                val selected = tabbedPane.selectedIndex == idx
+                val background = if (selected) buttonColor else cardColor
+                val foreground = if (selected) Color.WHITE else textColor
+                val borderColor = if (selected) buttonColor.darker() else highlightColor
+                button.background = background
+                button.foreground = foreground
+                button.border = BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(borderColor, 1, true),
+                    EmptyBorder(8, 26, 8, 26)
+                )
+                button.isSelected = selected
+            }
+        }
+
+        tabbedPane.addChangeListener { refreshSelection() }
+        refreshSelection()
+    }
+
     fun styleTable(table: JTable) {
         table.foreground = textColor
         table.background = Color.WHITE
