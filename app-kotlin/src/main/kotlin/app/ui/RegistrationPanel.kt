@@ -296,7 +296,7 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
 
         try {
             val participant = AppContext.participantService.addParticipant(first, last, dob, phone, email)
-            AppContext.registrationService.register(eventOption.event.id, participant.id)
+            AppContext.registrationService.registerForScheduledEvent(eventOption.schedule, participant.id)
             JOptionPane.showMessageDialog(this, "Participant registered")
             clearForm()
             refreshAll()
