@@ -7,25 +7,27 @@ import algo.SlotSuggestion
 import app.AppContext
 import java.awt.BorderLayout
 import java.awt.Dimension
+import java.awt.FlowLayout
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
 import java.awt.Insets
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import javax.swing.BorderFactory
+import javax.swing.DefaultComboBoxModel
 import javax.swing.JButton
 import javax.swing.JComboBox
-import javax.swing.JComponent
 import javax.swing.JLabel
 import javax.swing.JOptionPane
 import javax.swing.JPanel
+import javax.swing.JScrollPane
 import javax.swing.JSpinner
 import javax.swing.JTable
 import javax.swing.ListSelectionModel
 import javax.swing.SpinnerNumberModel
+import javax.swing.border.EmptyBorder
 import javax.swing.table.DefaultTableModel
 
-class SchedulePanel : JPanel(BorderLayout(15, 15)) {
+class SchedulePanel : JPanel(BorderLayout(10, 10)) {
 
     private data class EventOption(val event: core.model.Event) {
         override fun toString(): String {
@@ -38,7 +40,7 @@ class SchedulePanel : JPanel(BorderLayout(15, 15)) {
 
     private val eventDropdown = JComboBox<EventOption>()
     private val plannedSizeSpinner = JSpinner(SpinnerNumberModel(50, 1, 100000, 1))
-    private val earliestDateField = DatePickerField(LocalDate.now(), LocalDate.now())
+    private val earliestDateField = DateField(LocalDate.now())
     private val refreshButton = JButton("Refresh")
     private val findSlotButton = JButton("Find Slot")
     private val buildScheduleButton = JButton("Build Schedule")
@@ -75,28 +77,25 @@ class SchedulePanel : JPanel(BorderLayout(15, 15)) {
     private var currentScheduleResults: List<ScheduleResult> = emptyList()
 
     init {
-        background = UiTheme.backgroundColor
-        border = javax.swing.border.EmptyBorder(20, 20, 20, 20)
+        border = EmptyBorder(12, 12, 12, 12)
 
         configureTables()
-        configureButtons()
-
-        val controlsCard = buildControlsCard()
-        val slotCard = createTableCard("Slot Suggestions", slotTable, confirmSlotButton)
-        val scheduleCard = createTableCard("Generated Schedule Preview", scheduleTable, confirmScheduleButton)
-        val confirmedCard = createTableCard("Confirmed Events", confirmedTable, removeConfirmedButton)
 
         val content = JPanel()
-        content.background = UiTheme.backgroundColor
         content.layout = javax.swing.BoxLayout(content, javax.swing.BoxLayout.Y_AXIS)
-        listOf(controlsCard, slotCard, scheduleCard, confirmedCard).forEachIndexed { index, card ->
+        listOf(
+            buildControlsCard(),
+            createTableCard("Slot Suggestions", slotTable, confirmSlotButton),
+            createTableCard("Generated Schedule Preview", scheduleTable, confirmScheduleButton),
+            createTableCard("Confirmed Events", confirmedTable, removeConfirmedButton)
+        ).forEachIndexed { index, card ->
             content.add(card)
-            if (index != 3) {
-                content.add(javax.swing.Box.createVerticalStrut(16))
+            if (index < 3) {
+                content.add(javax.swing.Box.createVerticalStrut(12))
             }
         }
 
-        add(UiTheme.wrapWithScroll(content), BorderLayout.CENTER)
+        add(JScrollPane(content), BorderLayout.CENTER)
 
         eventDropdown.addActionListener { onEventSelected() }
         refreshButton.addActionListener { refreshData() }
@@ -112,47 +111,30 @@ class SchedulePanel : JPanel(BorderLayout(15, 15)) {
 
     private fun configureTables() {
         listOf(slotTable, scheduleTable, confirmedTable).forEach { table ->
-            UiTheme.styleTable(table)
             table.selectionModel.selectionMode = ListSelectionModel.SINGLE_SELECTION
+            table.autoCreateRowSorter = true
         }
         val idColumn = confirmedTable.columnModel.getColumn(0)
         idColumn.minWidth = 0
         idColumn.maxWidth = 0
         idColumn.preferredWidth = 0
-        idColumn.width = 0
     }
 
-    private fun configureButtons() {
-        listOf(
-            refreshButton,
-            findSlotButton,
-            buildScheduleButton,
-            clearButton,
-            confirmSlotButton,
-            confirmScheduleButton,
-            removeConfirmedButton
-        ).forEach(UiTheme::stylePrimaryButton)
-    }
-
-    private fun buildControlsCard(): JComponent {
-        val card = UiTheme.createCard(GridBagLayout()).apply {
-            border = BorderFactory.createCompoundBorder(
-                BorderFactory.createTitledBorder(BorderFactory.createLineBorder(UiTheme.highlightColor), "Scheduling Options"),
-                javax.swing.border.EmptyBorder(16, 16, 16, 16)
-            )
-        }
+    private fun buildControlsCard(): JPanel {
+        val card = JPanel(GridBagLayout())
+        card.border = javax.swing.BorderFactory.createTitledBorder("Scheduling Options")
         val gbc = GridBagConstraints().apply {
-            insets = Insets(6, 6, 6, 6)
+            insets = Insets(4, 4, 4, 4)
             anchor = GridBagConstraints.WEST
             fill = GridBagConstraints.HORIZONTAL
         }
 
         var row = 0
-        fun addRow(label: String, component: JComponent) {
+        fun addRow(label: String, component: java.awt.Component) {
             gbc.gridx = 0
             gbc.gridy = row
             gbc.weightx = 0.0
-            card.add(UiTheme.styleLabel(JLabel(label), bold = true), gbc)
+            card.add(JLabel(label), gbc)
 
             gbc.gridx = 1
             gbc.weightx = 1.0
@@ -160,38 +142,40 @@ class SchedulePanel : JPanel(BorderLayout(15, 15)) {
             row++
         }
 
-        eventDropdown.preferredSize = Dimension(260, 30)
-        plannedSizeSpinner.preferredSize = Dimension(120, 30)
-        earliestDateField.spinner.preferredSize = Dimension(150, 30)
+        eventDropdown.preferredSize = Dimension(260, 28)
+        plannedSizeSpinner.preferredSize = Dimension(120, 28)
+        earliestDateField.spinner.preferredSize = Dimension(150, 28)
 
         addRow("Event:", eventDropdown)
         addRow("Planned size:", plannedSizeSpinner)
         addRow("Earliest date:", earliestDateField.component)
 
-        val buttonRow = UiTheme.createButtonRow(refreshButton, findSlotButton, buildScheduleButton, clearButton)
+        val buttonRow = JPanel(FlowLayout(FlowLayout.LEFT, 8, 0)).apply {
+            add(refreshButton)
+            add(findSlotButton)
+            add(buildScheduleButton)
+            add(clearButton)
+        }
+
         gbc.gridx = 0
         gbc.gridy = row
         gbc.gridwidth = 2
+        gbc.weightx = 1.0
         card.add(buttonRow, gbc)
 
         return card
     }
 
-    private fun createTableCard(title: String, table: JTable, actionButton: JButton): JComponent {
-        val card = UiTheme.createCard(BorderLayout(10, 10)).apply {
-            border = BorderFactory.createCompoundBorder(
-                BorderFactory.createTitledBorder(BorderFactory.createLineBorder(UiTheme.highlightColor), title),
-                javax.swing.border.EmptyBorder(12, 12, 12, 12)
-            )
-        }
-        val scroll = javax.swing.JScrollPane(table).apply {
-            border = BorderFactory.createEmptyBorder()
-            preferredSize = Dimension(0, 220)
-            background = UiTheme.cardColor
-            viewport.background = java.awt.Color.WHITE
+    private fun createTableCard(title: String, table: JTable, actionButton: JButton): JPanel {
+        val card = JPanel(BorderLayout(6, 6))
+        card.border = javax.swing.BorderFactory.createTitledBorder(title)
+        val scroll = JScrollPane(table)
+        scroll.preferredSize = Dimension(0, 220)
+        val buttonRow = JPanel(FlowLayout(FlowLayout.LEFT, 8, 0)).apply {
+            add(actionButton)
         }
         card.add(scroll, BorderLayout.CENTER)
-        card.add(UiTheme.createButtonRow(actionButton), BorderLayout.SOUTH)
+        card.add(buttonRow, BorderLayout.SOUTH)
         return card
     }
 
@@ -205,7 +189,7 @@ class SchedulePanel : JPanel(BorderLayout(15, 15)) {
         val previousId = (eventDropdown.selectedItem as? EventOption)?.event?.id
         val events = AppContext.eventService.reload()
             .sortedWith(compareBy({ it.date }, { it.startTime }, { it.title }))
-        val model = javax.swing.DefaultComboBoxModel<EventOption>()
+        val model = DefaultComboBoxModel<EventOption>()
         events.forEach { model.addElement(EventOption(it)) }
         eventDropdown.model = model
         if (model.size > 0) {
@@ -261,7 +245,7 @@ class SchedulePanel : JPanel(BorderLayout(15, 15)) {
                 val venueMap = venuesList.associateBy { it.id }
                 limited.forEachIndexed { index, suggestion ->
                     val venueName = suggestion.venueId?.let { venueMap[it]?.name } ?: "(venue TBD)"
-                    val rankLabel = if (index == 0) "⭐ #1" else "#${index + 1}"
+                    val rankLabel = if (index == 0) "#1" else "#${index + 1}"
                     slotTableModel.addRow(
                         arrayOf(
                             rankLabel,
@@ -409,10 +393,9 @@ class SchedulePanel : JPanel(BorderLayout(15, 15)) {
                 schedule.endTime,
                 schedule.venueId.takeIf { it.isNotBlank() }
             )
+            JOptionPane.showMessageDialog(this, "Schedule confirmed.")
             loadConfirmedSchedules()
             refreshEventDropdown()
-            val title = scheduleTableModel.getValueAt(selectedRow, 0) as? String ?: schedule.eventId
-            JOptionPane.showMessageDialog(this, "Confirmed schedule for '$title'.")
         } catch (e: Exception) {
             e.printStackTrace()
             JOptionPane.showMessageDialog(this, "Unable to confirm schedule: ${e.message}")
@@ -420,30 +403,36 @@ class SchedulePanel : JPanel(BorderLayout(15, 15)) {
     }
 
     private fun loadConfirmedSchedules() {
-        val scheduledRecords = AppContext.scheduledEventService.reload()
-        val events = AppContext.eventService.reload()
-        val venues = AppContext.venueService.reload()
-        val eventMap = events.associateBy { it.id }
-        val venueMap = venues.associateBy { it.id }
-
         confirmedTableModel.rowCount = 0
-        scheduledRecords
-            .sortedWith(compareBy({ it.date }, { it.startTime }, { eventMap[it.eventId]?.title ?: it.eventId }))
-            .forEach { record ->
-                val event = eventMap[record.eventId]
-                val venueName = record.venueId?.let { venueMap[it]?.name } ?: "(venue TBD)"
+        val events = AppContext.eventService.reload().associateBy { it.id }
+        val venues = AppContext.venueService.reload().associateBy { it.id }
+        AppContext.scheduledEventService.reload()
+            .sortedWith(compareBy({ it.date }, { it.startTime }))
+            .forEach { schedule ->
+                val event = events[schedule.eventId]
+                val venueName = schedule.venueId?.let { venues[it]?.name } ?: "TBC"
                 confirmedTableModel.addRow(
                     arrayOf(
-                        record.eventId,
-                        event?.title ?: record.eventId,
-                        record.date.format(dateFormatter),
-                        record.startTime.toString(),
-                        record.endTime.toString(),
+                        schedule.eventId,
+                        event?.title ?: schedule.eventId,
+                        schedule.date.format(dateFormatter),
+                        schedule.startTime.toString(),
+                        schedule.endTime.toString(),
                         venueName,
-                        record.confirmedAt
+                        schedule.confirmedAt.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
                     )
                 )
             }
+    }
+
+    private fun clearSlotTable() {
+        slotTableModel.rowCount = 0
+        currentSuggestions = emptyList()
+    }
+
+    private fun clearScheduleTable() {
+        scheduleTableModel.rowCount = 0
+        currentScheduleResults = emptyList()
     }
 
     private fun clearTransientTables() {
@@ -451,13 +440,7 @@ class SchedulePanel : JPanel(BorderLayout(15, 15)) {
         clearScheduleTable()
     }
 
-    private fun clearSlotTable() {
-        currentSuggestions = emptyList()
-        slotTableModel.rowCount = 0
-    }
-
-    private fun clearScheduleTable() {
-        currentScheduleResults = emptyList()
-        scheduleTableModel.rowCount = 0
+    fun refreshFromOutside() {
+        refreshData()
     }
 }
