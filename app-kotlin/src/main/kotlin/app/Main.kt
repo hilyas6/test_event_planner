@@ -32,13 +32,14 @@ fun main() {
         val tabs = JTabbedPane().apply {
             background = UiTheme.backgroundColor
             foreground = UiTheme.textColor
-            border = BorderFactory.createMatteBorder(0, 0, 1, 0, UiTheme.highlightColor)
             tabLayoutPolicy = JTabbedPane.SCROLL_TAB_LAYOUT
         }
         tabs.add("Venues", safePanel("Venues") { VenueFormPanel() })
         tabs.add("Events", safePanel("Events") { EventFormPanel() })
         tabs.add("Scheduling", safePanel("Scheduling") { SchedulePanel() })
         tabs.add("Registration", safePanel("Registration") { RegistrationPanel() })
+
+        UiTheme.applyToolbarTheme(tabs)
 
         frame.contentPane.add(tabs, BorderLayout.CENTER)
         frame.isVisible = true
