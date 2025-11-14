@@ -1,10 +1,12 @@
 package app
 
 import app.ui.EventFormPanel
+import app.ui.HeadlessFallback
 import app.ui.RegistrationPanel
 import app.ui.SchedulePanel
 import app.ui.VenueFormPanel
 import java.awt.BorderLayout
+import java.awt.GraphicsEnvironment
 import javax.swing.JFrame
 import javax.swing.JTabbedPane
 import javax.swing.SwingUtilities
@@ -12,6 +14,12 @@ import javax.swing.UIManager
 
 fun main() {
     println("Launching Event Planner…")
+
+    if (GraphicsEnvironment.isHeadless()) {
+        HeadlessFallback.run()
+        return
+    }
+
     SwingUtilities.invokeLater {
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName())

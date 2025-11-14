@@ -227,7 +227,6 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
         addRow("Description:", JScrollPane(eventDescriptionArea).apply {
             preferredSize = Dimension(0, 70)
             border = BorderFactory.createEmptyBorder()
-            viewport.border = BorderFactory.createEmptyBorder()
         })
 
         return card
