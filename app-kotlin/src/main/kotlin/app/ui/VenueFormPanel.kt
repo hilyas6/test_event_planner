@@ -2,13 +2,11 @@ package app.ui
 
 import app.AppContext
 import java.awt.BorderLayout
-import java.awt.Dimension
+import java.awt.FlowLayout
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
 import java.awt.Insets
-import javax.swing.BorderFactory
 import javax.swing.JButton
-import javax.swing.JComponent
 import javax.swing.JLabel
 import javax.swing.JOptionPane
 import javax.swing.JPanel
@@ -20,11 +18,11 @@ import javax.swing.SpinnerNumberModel
 import javax.swing.border.EmptyBorder
 import javax.swing.table.DefaultTableModel
 
-class VenueFormPanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(BorderLayout(15, 15)) {
+class VenueFormPanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(BorderLayout(10, 10)) {
 
-    private val nameField = JTextField(12)
+    private val nameField = JTextField(16)
     private val capacityField = JSpinner(SpinnerNumberModel(10, 1, 10000, 1))
-    private val cityField = JTextField(12)
+    private val cityField = JTextField(16)
 
     private val addButton = JButton("Add")
     private val deleteButton = JButton("Delete")
@@ -34,36 +32,26 @@ class VenueFormPanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(B
     private val table = JTable(tableModel)
 
     init {
-        background = UiTheme.backgroundColor
-        border = EmptyBorder(20, 20, 20, 20)
+        border = EmptyBorder(12, 12, 12, 12)
 
-        val formCard = UiTheme.createCard(GridBagLayout()).apply {
-            border = BorderFactory.createCompoundBorder(
-                BorderFactory.createTitledBorder(BorderFactory.createLineBorder(UiTheme.highlightColor), "Venue Details"),
-                EmptyBorder(15, 20, 15, 20)
-            )
-        }
-
+        val formPanel = JPanel(GridBagLayout())
         val gbc = GridBagConstraints().apply {
-            insets = Insets(6, 6, 6, 6)
             anchor = GridBagConstraints.WEST
+            insets = Insets(4, 4, 4, 4)
             fill = GridBagConstraints.HORIZONTAL
-        }
-
-        fun JComponent.compact(): JComponent = apply {
-            preferredSize = Dimension(180, 28)
+            weightx = 1.0
         }
 
         var row = 0
-        fun addRow(label: String, component: JComponent) {
+        fun addRow(label: String, component: java.awt.Component) {
             gbc.gridx = 0
             gbc.gridy = row
             gbc.weightx = 0.0
-            formCard.add(UiTheme.styleLabel(JLabel(label), bold = true), gbc)
+            formPanel.add(JLabel(label), gbc)
 
             gbc.gridx = 1
             gbc.weightx = 1.0
-            formCard.add(component.compact(), gbc)
+            formPanel.add(component, gbc)
             row++
         }
 
@@ -71,25 +59,21 @@ class VenueFormPanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(B
         addRow("Capacity:", capacityField)
         addRow("Location:", cityField)
 
-        val buttonPanel = UiTheme.createButtonRow(addButton, deleteButton, refreshButton)
-
-        val formWrapper = JPanel(BorderLayout()).apply {
-            background = UiTheme.backgroundColor
-            add(formCard, BorderLayout.CENTER)
-            add(buttonPanel, BorderLayout.SOUTH)
+        val buttonRow = JPanel(FlowLayout(FlowLayout.LEFT, 8, 0)).apply {
+            add(addButton)
+            add(deleteButton)
+            add(refreshButton)
         }
 
-        UiTheme.styleTable(table)
+        val top = JPanel(BorderLayout(6, 6)).apply {
+            add(formPanel, BorderLayout.CENTER)
+            add(buttonRow, BorderLayout.SOUTH)
+        }
+
+        val scrollPane = JScrollPane(table)
         table.autoResizeMode = JTable.AUTO_RESIZE_ALL_COLUMNS
 
-        val scrollPane = JScrollPane(table).apply {
-            border = BorderFactory.createTitledBorder(BorderFactory.createLineBorder(UiTheme.highlightColor), "Saved Venues")
-            preferredSize = Dimension(0, 220)
-            background = UiTheme.cardColor
-            viewport.background = java.awt.Color.WHITE
-        }
-
-        add(formWrapper, BorderLayout.NORTH)
+        add(top, BorderLayout.NORTH)
         add(scrollPane, BorderLayout.CENTER)
 
         addButton.addActionListener { addVenue() }
@@ -100,18 +84,18 @@ class VenueFormPanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(B
     }
 
     private fun addVenue() {
+        val name = nameField.text.trim()
+        val city = cityField.text.trim()
+        val capacity = (capacityField.value as Number).toInt()
+
+        if (name.isEmpty() || city.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please fill all fields")
+            return
+        }
+
         try {
-            val name = nameField.text.trim()
-            val city = cityField.text.trim()
-            val capacity = (capacityField.value as Number).toInt()
-
-            if (name.isEmpty() || city.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Please fill all fields")
-                return
-            }
-
             AppContext.venueService.addVenue(name, capacity, city)
-            JOptionPane.showMessageDialog(this, "✅ Venue '$name' added!")
+            JOptionPane.showMessageDialog(this, "Venue '$name' added")
             clearForm()
             refreshTable()
             onDataChanged?.invoke()
@@ -126,10 +110,11 @@ class VenueFormPanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(B
             JOptionPane.showMessageDialog(this, "Please select a venue to delete")
             return
         }
-        val id = tableModel.getValueAt(row, 0) as String
-        val name = tableModel.getValueAt(row, 1) as String
+        val modelRow = table.convertRowIndexToModel(row)
+        val id = tableModel.getValueAt(modelRow, 0) as String
+        val name = tableModel.getValueAt(modelRow, 1) as String
         AppContext.venueService.deleteVenueById(id)
-        JOptionPane.showMessageDialog(this, "🗑 Venue '$name' removed!")
+        JOptionPane.showMessageDialog(this, "Venue '$name' removed")
         refreshTable()
         onDataChanged?.invoke()
     }

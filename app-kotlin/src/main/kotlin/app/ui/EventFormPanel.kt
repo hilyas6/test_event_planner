@@ -2,20 +2,19 @@ package app.ui
 
 import app.AppContext
 import java.awt.BorderLayout
-import java.awt.Dimension
+import java.awt.FlowLayout
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
 import java.awt.Insets
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
-import javax.swing.BorderFactory
 import javax.swing.JButton
 import javax.swing.JComboBox
-import javax.swing.JComponent
 import javax.swing.JLabel
 import javax.swing.JOptionPane
 import javax.swing.JPanel
+import javax.swing.JScrollPane
 import javax.swing.JSpinner
 import javax.swing.JTable
 import javax.swing.JTextField
@@ -23,12 +22,12 @@ import javax.swing.SpinnerNumberModel
 import javax.swing.border.EmptyBorder
 import javax.swing.table.DefaultTableModel
 
-class EventFormPanel : JPanel(BorderLayout(15, 15)) {
+class EventFormPanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(BorderLayout(10, 10)) {
 
     private val titleField = JTextField(30)
     private val descriptionField = JTextField(30)
     private val categoryBox = JComboBox(arrayOf("Workshops", "Festivals", "Conferences", "Entertainment", "Sports", "Other"))
-    private val dateField = DatePickerField(LocalDate.now())
+    private val dateField = DateField(LocalDate.now())
     private val timeOptions: List<String> = generateTimeOptions()
     private val startTimeBox = JComboBox(timeOptions.toTypedArray())
     private val endTimeBox = JComboBox(timeOptions.toTypedArray())
@@ -46,37 +45,31 @@ class EventFormPanel : JPanel(BorderLayout(15, 15)) {
     ) {
         override fun isCellEditable(row: Int, column: Int) = false
     }
-
     private val eventTable = JTable(tableModel)
     private val dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
     private val emailRegex = Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")
 
     init {
-        background = UiTheme.backgroundColor
-        border = EmptyBorder(20, 20, 20, 20)
+        border = EmptyBorder(12, 12, 12, 12)
 
-        val formCard = UiTheme.createCard(GridBagLayout())
+        val formPanel = JPanel(GridBagLayout())
         val gbc = GridBagConstraints().apply {
-            insets = Insets(8, 8, 8, 8)
             anchor = GridBagConstraints.WEST
+            insets = Insets(4, 4, 4, 4)
             fill = GridBagConstraints.HORIZONTAL
             weightx = 1.0
         }
 
-        fun prepare(component: JComponent): JComponent = component.apply {
-            preferredSize = Dimension(240, 30)
-        }
-
         var row = 0
-        fun addRow(label: String, component: JComponent) {
+        fun addRow(label: String, component: java.awt.Component) {
             gbc.gridx = 0
             gbc.gridy = row
             gbc.weightx = 0.0
-            formCard.add(UiTheme.styleLabel(JLabel(label), bold = true), gbc)
+            formPanel.add(JLabel(label), gbc)
 
             gbc.gridx = 1
             gbc.weightx = 1.0
-            formCard.add(prepare(component), gbc)
+            formPanel.add(component, gbc)
             row++
         }
 
@@ -93,28 +86,25 @@ class EventFormPanel : JPanel(BorderLayout(15, 15)) {
         startTimeBox.selectedItem = "09:00"
         endTimeBox.selectedItem = "10:00"
 
-        val formWrapper = JPanel(BorderLayout()).apply {
-            background = UiTheme.backgroundColor
-            add(formCard, BorderLayout.CENTER)
-            add(UiTheme.createButtonRow(addButton, deleteButton, refreshButton), BorderLayout.SOUTH)
+        val buttonRow = JPanel(FlowLayout(FlowLayout.LEFT, 8, 0)).apply {
+            add(addButton)
+            add(deleteButton)
+            add(refreshButton)
         }
 
-        UiTheme.styleTable(eventTable)
-        val tableScroll = javax.swing.JScrollPane(eventTable).apply {
-            border = BorderFactory.createTitledBorder(BorderFactory.createLineBorder(UiTheme.highlightColor), "Saved Events")
-            preferredSize = Dimension(0, 260)
-            background = UiTheme.cardColor
-            viewport.background = java.awt.Color.WHITE
+        val top = JPanel(BorderLayout(6, 6)).apply {
+            add(formPanel, BorderLayout.CENTER)
+            add(buttonRow, BorderLayout.SOUTH)
         }
 
+        val tableScroll = JScrollPane(eventTable)
         eventTable.columnModel.getColumn(0).apply {
             minWidth = 0
-            maxWidth = 0
-            width = 0
             preferredWidth = 0
+            maxWidth = 0
         }
 
-        add(formWrapper, BorderLayout.NORTH)
+        add(top, BorderLayout.NORTH)
         add(tableScroll, BorderLayout.CENTER)
 
         loadEvents()
@@ -131,15 +121,15 @@ class EventFormPanel : JPanel(BorderLayout(15, 15)) {
         var current = start
         while (!current.isAfter(end)) {
             times += String.format("%02d:%02d", current.hour, current.minute)
-            current = current.plusMinutes(15)
+            current = current.plusMinutes(30)
         }
         return times
     }
 
     private fun loadEvents() {
         tableModel.rowCount = 0
-        val events = AppContext.eventService.reload()
-        events.sortedWith(compareBy({ it.date }, { it.startTime }, { it.title }))
+        AppContext.eventService.reload()
+            .sortedWith(compareBy({ it.date }, { it.startTime }, { it.title }))
             .forEach {
                 tableModel.addRow(
                     arrayOf(
@@ -173,7 +163,7 @@ class EventFormPanel : JPanel(BorderLayout(15, 15)) {
             return
         }
         if (!emailRegex.matches(organiserEmail)) {
-            JOptionPane.showMessageDialog(this, "Please enter a valid organiser email.", "Invalid Email", JOptionPane.ERROR_MESSAGE)
+            JOptionPane.showMessageDialog(this, "Please enter a valid organiser email.")
             return
         }
         if (!end.isAfter(start)) {
@@ -195,12 +185,12 @@ class EventFormPanel : JPanel(BorderLayout(15, 15)) {
                 organiserName = organiserName,
                 organiserEmail = organiserEmail
             )
-            JOptionPane.showMessageDialog(this, "✅ Event added successfully!")
+            JOptionPane.showMessageDialog(this, "Event added successfully.")
             clearForm()
             loadEvents()
+            onDataChanged?.invoke()
         } catch (e: Exception) {
-            e.printStackTrace()
-            JOptionPane.showMessageDialog(this, "⚠️ Error: ${e.message}")
+            JOptionPane.showMessageDialog(this, "Error: ${e.message}")
         }
     }
 
@@ -214,6 +204,7 @@ class EventFormPanel : JPanel(BorderLayout(15, 15)) {
         val eventId = tableModel.getValueAt(modelRow, 0) as String
         AppContext.eventService.deleteEventById(eventId)
         loadEvents()
+        onDataChanged?.invoke()
     }
 
     private fun clearForm() {
