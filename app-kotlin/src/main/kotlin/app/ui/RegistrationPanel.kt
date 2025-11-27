@@ -42,7 +42,8 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
                 hasStarted -> " • Started"
                 else -> ""
             }
-            return "${event.title} (${schedule.date} $timeRange @ $venueDisplay, $remaining/$capacity spots left)$statusSuffix"
+            val dateText = schedule.date.format(dateFormatter)
+            return "${event.title} ($dateText $timeRange @ $venueDisplay, $remaining/$capacity spots left)$statusSuffix"
         }
     }
 
@@ -414,6 +415,7 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
                 val hasStarted = java.time.LocalDateTime.of(schedule.date, schedule.startTime).isBefore(now)
                 EventOption(event, schedule, venue, remaining, capacityLimit, hasStarted)
             }
+            .filter { option -> option.remaining > 0 && !option.hasStarted }
             .sortedWith(compareBy({ it.schedule.date }, { it.schedule.startTime }, { it.event.title }))
             .forEach { eventModel.addElement(it) }
 
