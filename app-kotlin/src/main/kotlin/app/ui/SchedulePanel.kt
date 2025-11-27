@@ -203,10 +203,10 @@ class SchedulePanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(Bo
 
     private fun refreshEventDropdown() {
         val previousId = (eventDropdown.selectedItem as? EventOption)?.event?.id
-        val today = LocalDate.now()
         val scheduledEventIds = AppContext.scheduledEventService.reload().map { it.eventId }.toSet()
+        val now = LocalDateTime.now()
         val events = AppContext.eventService.reload()
-            .filter { !it.date.isBefore(today) }
+            .filter { !LocalDateTime.of(it.date, it.startTime).isBefore(now) }
             .filterNot { scheduledEventIds.contains(it.id) }
             .sortedWith(compareBy({ it.date }, { it.startTime }, { it.title }))
         val model = javax.swing.DefaultComboBoxModel<EventOption>()
@@ -239,11 +239,12 @@ class SchedulePanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(Bo
             val selectedEvent = option.event
 
             val planned = plannedSizeSpinner.value as Int
+            val now = LocalDateTime.now()
             val today = LocalDate.now()
             val earliest = if (selectedEvent.date.isBefore(today)) today else selectedEvent.date
 
             val eventsList = AppContext.eventService.reload()
-                .filter { !it.date.isBefore(today) }
+                .filter { !LocalDateTime.of(it.date, it.startTime).isBefore(now) }
             val eventsForSuggestions = eventsList.filter { it.id != selectedEvent.id }
             val venuesList = AppContext.venueService.reload()
             val registrationsList = AppContext.registrationService.reload()
@@ -362,10 +363,10 @@ class SchedulePanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(Bo
         try {
             clearScheduleTable()
 
-            val today = LocalDate.now()
+            val now = LocalDateTime.now()
             val scheduledEventIds = AppContext.scheduledEventService.reload().map { it.eventId }.toSet()
             val eventsList = AppContext.eventService.reload()
-                .filter { !it.date.isBefore(today) }
+                .filter { !LocalDateTime.of(it.date, it.startTime).isBefore(now) }
             val unscheduledEvents = eventsList.filterNot { scheduledEventIds.contains(it.id) }
             val venuesList = AppContext.venueService.reload()
             val registrationsList = AppContext.registrationService.reload()
