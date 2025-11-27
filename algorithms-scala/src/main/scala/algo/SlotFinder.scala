@@ -23,7 +23,8 @@ object SlotFinder {
                    preferredStart: LocalTime,
                    preferredEnd: LocalTime): java.util.List[SlotSuggestion] = {
 
-    val today = LocalDate.now()
+    val now = java.time.LocalDateTime.now()
+    val today = now.toLocalDate
     val startDate = if (earliestDate.isBefore(today)) today else earliestDate
 
     val evs = events.asScala.toList.filter(e => !e.getDate.isBefore(startDate))
@@ -36,12 +37,14 @@ object SlotFinder {
     val requestedDuration = Duration.between(preferredStart, preferredEnd)
     val durationMinutes = if (requestedDuration.isPositive) requestedDuration.toMinutes else DefaultDurationMinutes
 
-    val eventsByVenueDate: Map[(String, LocalDate), List[(LocalTime, LocalTime)]] =
+    val eventsByVenueDate: Map[(String, LocalDate), List[(LocalTime, LocalTime, Int)]] =
       evs.flatMap { event =>
         Option(event.getVenueId).map { vid =>
-          ((vid, event.getDate), (event.getStartTime, event.getEndTime))
+          ((vid, event.getDate), (event.getStartTime, event.getEndTime, event.getExpectedSize))
         }
       }.groupBy(_._1).view.mapValues(_.map(_._2)).toMap.withDefaultValue(Nil)
+
+    val capacityByVenue: Map[String, Int] = vns.map(v => v.getId -> v.getCapacity).toMap
 
     val busyByParticipant: Map[String, List[(LocalDate, LocalTime, LocalTime)]] =
       regs.flatMap { reg =>
@@ -60,14 +63,27 @@ object SlotFinder {
       venue <- vns
     } {
       val venueBusy = eventsByVenueDate((venue.getId, date))
-      val start = preferredStart
-      val end = start.plusMinutes(durationMinutes)
-      if (!start.isBefore(DayStart) && !end.isAfter(DayEnd)) {
-        val clash = venueBusy.exists { case (s, e) => overlaps(s, e, start, end) }
-        if (!clash) {
+
+      val baselineStart = if (preferredStart.isBefore(DayStart)) DayStart else preferredStart
+      val presentAdjustedStart =
+        if (date.isEqual(today) && baselineStart.isBefore(now.toLocalTime)) {
+          if (baselineStart.isAfter(now.toLocalTime)) baselineStart else now.toLocalTime
+        } else baselineStart
+
+      val end = presentAdjustedStart.plusMinutes(durationMinutes)
+
+      if (!presentAdjustedStart.isBefore(DayStart) && !end.isAfter(DayEnd)) {
+        val withinCapacity = {
+          val overlapping = venueBusy.filter { case (s, e, _) => overlaps(s, e, presentAdjustedStart, end) }
+          val usedCapacity = overlapping.map(_._3).sum
+          val capacity = capacityByVenue.getOrElse(venue.getId, 0)
+          usedCapacity + plannedSize <= capacity
+        }
+
+        if (withinCapacity) {
           val unavailable = participantIds.count { pid =>
             busyByParticipant(pid).exists { case (d, s, e) =>
-              d == date && overlaps(s, e, start, end)
+              d == date && overlaps(s, e, presentAdjustedStart, end)
             }
           }
           val available = participantIds.size - unavailable
@@ -79,7 +95,7 @@ object SlotFinder {
           } else {
             s"$available of ${participantIds.size} participants free"
           }
-          suggestions += new SlotSuggestion(venue.getId, date, start, end, compositeScore, note)
+          suggestions += new SlotSuggestion(venue.getId, date, presentAdjustedStart, end, compositeScore, note)
         }
       }
     }

@@ -11,6 +11,7 @@ import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
 import java.awt.Insets
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import javax.swing.BorderFactory
 import javax.swing.JButton
@@ -239,13 +240,14 @@ class SchedulePanel : JPanel(BorderLayout(15, 15)) {
 
             val eventsList = AppContext.eventService.reload()
                 .filter { !it.date.isBefore(today) }
+            val eventsForSuggestions = eventsList.filter { it.id != selectedEvent.id }
             val venuesList = AppContext.venueService.reload()
             val registrationsList = AppContext.registrationService.reload()
                 .filter { reg -> eventsList.any { it.id == reg.eventId } }
             val participantsList = AppContext.participantService.reload()
 
             val suggestions = SlotFinder.proposeSlots(
-                java.util.ArrayList(eventsList),
+                java.util.ArrayList(eventsForSuggestions),
                 java.util.ArrayList(venuesList),
                 java.util.ArrayList(registrationsList),
                 java.util.ArrayList(participantsList),
@@ -255,23 +257,32 @@ class SchedulePanel : JPanel(BorderLayout(15, 15)) {
                 selectedEvent.endTime
             ).toList()
 
-            val limited = suggestions.take(3)
+            val earliestStart = suggestions.minByOrNull { LocalDateTime.of(it.date, it.startTime) }
+            val earliestSuggestions = earliestStart?.let { first ->
+                val target = LocalDateTime.of(first.date, first.startTime)
+                suggestions.filter { LocalDateTime.of(it.date, it.startTime) == target }
+            } ?: emptyList()
+
+            val limited = earliestSuggestions.take(3)
             currentSuggestions = limited
 
             if (limited.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "No suitable venue found from ${earliest.format(dateFormatter)} for size $planned.")
             } else {
                 val venueMap = venuesList.associateBy { it.id }
-                val expectedByVenueDate = eventsList
+                val otherEventsByVenueDate = eventsForSuggestions
                     .filter { it.venueId != null }
                     .groupBy { it.venueId!! to it.date }
-                    .mapValues { (_, events) -> events.sumOf { it.expectedSize } }
                 limited.forEachIndexed { index, suggestion ->
                     val venueName = suggestion.venueId?.let { venueMap[it]?.name } ?: "(venue TBD)"
                     val capacityLeft = suggestion.venueId?.let { venueId ->
                         val venueCapacity = venueMap[venueId]?.capacity ?: return@let null
-                        val used = expectedByVenueDate.getOrDefault(venueId to suggestion.date, 0)
-                        (venueCapacity - used).coerceAtLeast(0)
+                        val overlapping = otherEventsByVenueDate.getOrDefault(venueId to suggestion.date, emptyList())
+                            .filter { event ->
+                                timesOverlap(event.startTime, event.endTime, suggestion.startTime, suggestion.endTime)
+                            }
+                        val used = overlapping.sumOf { it.expectedSize }
+                        (venueCapacity - used - planned).coerceAtLeast(0)
                     }
                     val rankLabel = if (index == 0) "⭐ #1" else "#${index + 1}"
                     slotTableModel.addRow(
@@ -476,4 +487,7 @@ class SchedulePanel : JPanel(BorderLayout(15, 15)) {
         currentScheduleResults = emptyList()
         scheduleTableModel.rowCount = 0
     }
+
+    private fun timesOverlap(aStart: java.time.LocalTime, aEnd: java.time.LocalTime, bStart: java.time.LocalTime, bEnd: java.time.LocalTime): Boolean =
+        aStart < bEnd && bStart < aEnd
 }
