@@ -150,15 +150,17 @@ class SchedulePanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(Bo
         }
 
         var row = 0
-        fun addRow(label: String, component: JComponent) {
+        fun addRow(label: String, component: JComponent, fillHorizontally: Boolean = true) {
             gbc.gridx = 0
             gbc.gridy = row
             gbc.weightx = 0.0
             card.add(UiTheme.styleLabel(JLabel(label), bold = true), gbc)
 
             gbc.gridx = 1
-            gbc.weightx = 1.0
+            gbc.weightx = if (fillHorizontally) 1.0 else 0.0
+            gbc.fill = if (fillHorizontally) GridBagConstraints.HORIZONTAL else GridBagConstraints.NONE
             card.add(component, gbc)
+            gbc.fill = GridBagConstraints.HORIZONTAL
             row++
         }
 
@@ -166,7 +168,7 @@ class SchedulePanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(Bo
         plannedSizeSpinner.preferredSize = Dimension(120, 30)
 
         addRow("Event:", eventDropdown)
-        addRow("Planned size:", plannedSizeSpinner)
+        addRow("Planned size:", plannedSizeSpinner, fillHorizontally = false)
 
         val buttonRow = UiTheme.createButtonRow(refreshButton, findSlotButton, buildScheduleButton, clearButton)
         gbc.gridx = 0
