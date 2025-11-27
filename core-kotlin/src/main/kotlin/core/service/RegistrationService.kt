@@ -18,11 +18,6 @@ class RegistrationService(
 ) {
     fun all(): List<Registration> = registrationRepo.allRegistrations()
 
-    fun register(eventId: String, participantId: String): Registration {
-        val schedule = scheduledEventRepo.allScheduledEvents().find { it.eventId == eventId }
-            ?: throw IllegalStateException("Event does not have a confirmed schedule")
-        return registerForScheduledEvent(schedule, participantId)
-    }
 
     fun registerForScheduledEvent(
         schedule: core.model.ScheduledEvent,
@@ -102,16 +97,13 @@ class RegistrationService(
             registeredAt = now
         )
         registrationRepo.saveRegistration(registration)
-        println("✅ Registered ${participant.firstName} ${participant.lastName} for ${event.title}")
+        println(" Registered ${participant.firstName} ${participant.lastName} for ${event.title}")
         return registration
     }
 
     private fun timesOverlap(aStart: java.time.LocalTime, aEnd: java.time.LocalTime, bStart: java.time.LocalTime, bEnd: java.time.LocalTime): Boolean {
         return aStart < bEnd && bStart < aEnd
     }
-
-    fun registrationsFor(eventId: String): List<Registration> =
-        registrationRepo.registrationsFor(eventId)
 
     fun deleteRegistrationById(id: String) {
         val updated = all().filterNot { it.id == id }
@@ -128,10 +120,6 @@ class RegistrationService(
         if (venueCapacity != null) capacityCandidates += venueCapacity
         return capacityCandidates.minOrNull() ?: event.expectedSize
     }
-
-    fun capacityLimit(eventId: String): Int? =
-        eventRepo.eventById(eventId)?.let { capacityLimit(it) }
-
     fun reload(): List<core.model.Registration> {
         val store = registrationRepo as? core.repo.file.JsonFileStore
         return store?.reloadRegistrations() ?: registrationRepo.allRegistrations()

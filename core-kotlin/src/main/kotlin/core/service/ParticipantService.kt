@@ -6,10 +6,6 @@ import java.time.LocalDate
 import java.util.*
 
 class ParticipantService(private val repo: ParticipantRepository) {
-    fun all(): List<Participant> = repo.allParticipants()
-
-    fun addParticipant(firstName: String, lastName: String, dob: LocalDate, phone: String, email: String): Participant =
-        upsertParticipant(firstName, lastName, dob, phone, email)
 
     fun upsertParticipant(
         firstName: String,
@@ -35,14 +31,6 @@ class ParticipantService(private val repo: ParticipantRepository) {
         val updated = current.filterNot { it.id == participant.id } + participant
         repo.saveAllParticipants(updated)
         return participant
-    }
-
-    fun findByEmail(email: String): Participant? =
-        repo.allParticipants().firstOrNull { it.email.equals(email.trim(), ignoreCase = true) }
-
-    fun deleteParticipantById(id: String) {
-        val updated = all().filterNot { it.id == id }
-        repo.saveAllParticipants(updated)
     }
     fun reload(): List<Participant> {
         val store = repo as? core.repo.file.JsonFileStore

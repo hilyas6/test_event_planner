@@ -13,7 +13,7 @@ class VenueService(private val repo: VenueRepository) {
         repo.saveVenue(venue)
     }
 
-    // ✅ NEW: delete venue safely
+    // delete venue safely
     fun deleteVenueById(id: String) {
         val updated = all().filterNot { it.id == id }
         repo.saveAllVenues(updated)

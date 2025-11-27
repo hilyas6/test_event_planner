@@ -13,8 +13,6 @@ class ScheduledEventService(
     private val venueService: VenueService
 ) {
 
-    fun all(): List<ScheduledEvent> = repo.allScheduledEvents()
-
     fun confirmSchedule(
         eventId: String,
         date: LocalDate,

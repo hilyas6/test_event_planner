@@ -2,7 +2,6 @@ package algo
 
 import core.model.{Event, Registration, Venue}
 import java.time.{LocalDate, LocalTime}
-import scala.collection.immutable.LazyList
 import scala.jdk.CollectionConverters._
 
 object Scheduler {

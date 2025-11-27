@@ -49,10 +49,6 @@ class EventService(private val repo: EventRepository) {
         repo.saveAllEvents(updated)
     }
 
-    fun replaceAll(events: List<Event>) {
-        repo.saveAllEvents(events)
-    }
-
     fun rescheduleEvent(
         eventId: String,
         date: LocalDate,
