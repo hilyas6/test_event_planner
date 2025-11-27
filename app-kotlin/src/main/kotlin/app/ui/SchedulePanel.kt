@@ -38,7 +38,6 @@ class SchedulePanel : JPanel(BorderLayout(15, 15)) {
 
     private val eventDropdown = JComboBox<EventOption>()
     private val plannedSizeSpinner = JSpinner(SpinnerNumberModel(50, 1, 100000, 1))
-    private val earliestDateField = DatePickerField(LocalDate.now(), LocalDate.now())
     private val refreshButton = JButton("Refresh")
     private val findSlotButton = JButton("Find Slot")
     private val buildScheduleButton = JButton("Build Schedule")
@@ -48,7 +47,7 @@ class SchedulePanel : JPanel(BorderLayout(15, 15)) {
     private val removeConfirmedButton = JButton("Remove Selected")
 
     private val slotTableModel = object : DefaultTableModel(
-        arrayOf("Rank", "Venue", "Date", "Start", "End"),
+        arrayOf("Rank", "Venue", "Date", "Start", "End", "Capacity Left"),
         0
     ) {
         override fun isCellEditable(row: Int, column: Int) = false
@@ -162,11 +161,9 @@ class SchedulePanel : JPanel(BorderLayout(15, 15)) {
 
         eventDropdown.preferredSize = Dimension(260, 30)
         plannedSizeSpinner.preferredSize = Dimension(120, 30)
-        earliestDateField.spinner.preferredSize = Dimension(150, 30)
 
         addRow("Event:", eventDropdown)
         addRow("Planned size:", plannedSizeSpinner)
-        addRow("Earliest date:", earliestDateField.component)
 
         val buttonRow = UiTheme.createButtonRow(refreshButton, findSlotButton, buildScheduleButton, clearButton)
         gbc.gridx = 0
@@ -222,9 +219,6 @@ class SchedulePanel : JPanel(BorderLayout(15, 15)) {
     private fun onEventSelected() {
         val option = eventDropdown.selectedItem as? EventOption ?: return
         plannedSizeSpinner.value = option.event.expectedSize
-        val today = LocalDate.now()
-        val baselineDate = if (option.event.date.isAfter(today)) option.event.date else today
-        earliestDateField.date = baselineDate
     }
 
     private fun onFindSlot() {
@@ -237,12 +231,17 @@ class SchedulePanel : JPanel(BorderLayout(15, 15)) {
 
             clearSlotTable()
 
+            val selectedEvent = option.event
+
             val planned = plannedSizeSpinner.value as Int
-            val earliest = earliestDateField.date
+            val today = LocalDate.now()
+            val earliest = if (selectedEvent.date.isBefore(today)) today else selectedEvent.date
 
             val eventsList = AppContext.eventService.reload()
+                .filter { !it.date.isBefore(today) }
             val venuesList = AppContext.venueService.reload()
             val registrationsList = AppContext.registrationService.reload()
+                .filter { reg -> eventsList.any { it.id == reg.eventId } }
             val participantsList = AppContext.participantService.reload()
 
             val suggestions = SlotFinder.proposeSlots(
@@ -251,7 +250,9 @@ class SchedulePanel : JPanel(BorderLayout(15, 15)) {
                 java.util.ArrayList(registrationsList),
                 java.util.ArrayList(participantsList),
                 planned,
-                earliest
+                earliest,
+                selectedEvent.startTime,
+                selectedEvent.endTime
             ).toList()
 
             val limited = suggestions.take(3)
@@ -261,8 +262,17 @@ class SchedulePanel : JPanel(BorderLayout(15, 15)) {
                 JOptionPane.showMessageDialog(this, "No suitable venue found from ${earliest.format(dateFormatter)} for size $planned.")
             } else {
                 val venueMap = venuesList.associateBy { it.id }
+                val expectedByVenueDate = eventsList
+                    .filter { it.venueId != null }
+                    .groupBy { it.venueId!! to it.date }
+                    .mapValues { (_, events) -> events.sumOf { it.expectedSize } }
                 limited.forEachIndexed { index, suggestion ->
                     val venueName = suggestion.venueId?.let { venueMap[it]?.name } ?: "(venue TBD)"
+                    val capacityLeft = suggestion.venueId?.let { venueId ->
+                        val venueCapacity = venueMap[venueId]?.capacity ?: return@let null
+                        val used = expectedByVenueDate.getOrDefault(venueId to suggestion.date, 0)
+                        (venueCapacity - used).coerceAtLeast(0)
+                    }
                     val rankLabel = if (index == 0) "⭐ #1" else "#${index + 1}"
                     slotTableModel.addRow(
                         arrayOf(
@@ -270,7 +280,8 @@ class SchedulePanel : JPanel(BorderLayout(15, 15)) {
                             venueName,
                             suggestion.date.format(dateFormatter),
                             suggestion.startTime.toString(),
-                            suggestion.endTime.toString()
+                            suggestion.endTime.toString(),
+                            capacityLeft?.toString() ?: "-"
                         )
                     )
                 }
@@ -334,9 +345,12 @@ class SchedulePanel : JPanel(BorderLayout(15, 15)) {
         try {
             clearScheduleTable()
 
+            val today = LocalDate.now()
             val eventsList = AppContext.eventService.reload()
+                .filter { !it.date.isBefore(today) }
             val venuesList = AppContext.venueService.reload()
             val registrationsList = AppContext.registrationService.reload()
+                .filter { reg -> eventsList.any { it.id == reg.eventId } }
 
             val preferenceScores = java.util.HashMap<String, Double>()
             val registrationsByEvent = registrationsList.groupBy { it.eventId }
