@@ -29,21 +29,25 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
 
     private data class EventOption(
         val event: core.model.Event,
-        val schedule: core.model.ScheduledEvent,
+        val schedule: core.model.ScheduledEvent?,
         val venue: core.model.Venue?,
         val remaining: Int,
         val capacity: Int,
         val hasStarted: Boolean
     ) {
         override fun toString(): String {
-            val timeRange = "${schedule.startTime}-${schedule.endTime}"
+            val date = schedule?.date ?: event.date
+            val start = schedule?.startTime ?: event.startTime
+            val end = schedule?.endTime ?: event.endTime
+            val timeRange = "$start-$end"
             val venueDisplay = venue?.name?.takeIf { it.isNotBlank() } ?: "Venue TBD"
             val statusSuffix = when {
+                schedule == null -> " • Needs schedule"
                 remaining <= 0 -> " • Full"
                 hasStarted -> " • Started"
                 else -> ""
             }
-            val dateText = schedule.date.format(dateFormatter)
+            val dateText = date.format(dateFormatter)
             return "${event.title} ($dateText $timeRange @ $venueDisplay, $remaining/$capacity spots left)$statusSuffix"
         }
     }
@@ -304,6 +308,12 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
             return
         }
 
+        if (eventOption.schedule == null) {
+            showMessage("This event has no confirmed schedule yet. Please confirm a schedule before registering participants.")
+            refreshAll()
+            return
+        }
+
         val firstName = firstNameField.text.trim()
         val lastName = lastNameField.text.trim()
         val phone = phoneField.text.trim()
@@ -406,23 +416,28 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
         val schedules = AppContext.scheduledEventService.reload()
         val venues = AppContext.venueService.reload()
         val venueMap = venues.associateBy { it.id }
-        val eventMap = events.associateBy { it.id }
+        val scheduleMap = schedules.associateBy { it.eventId }
         val today = LocalDate.now()
         val now = LocalTime.now()
 
-        schedules
-            .mapNotNull { schedule ->
-                val event = eventMap[schedule.eventId] ?: return@mapNotNull null
+        events
+            .map { event ->
+                val schedule = scheduleMap[event.id]
                 val capacityLimit = AppContext.registrationService.capacityLimit(event)
                 val remaining = AppContext.registrationService.remainingCapacity(event)
-                val venue = schedule.venueId?.let { venueMap[it] }
-                val isInFuture = schedule.date.isAfter(today)
-                val startsLaterToday = schedule.date.isEqual(today) && schedule.startTime.isAfter(now)
+                val venueId = schedule?.venueId ?: event.venueId
+                val venue = venueId?.let { venueMap[it] }
+
+                val date = schedule?.date ?: event.date
+                val start = schedule?.startTime ?: event.startTime
+
+                val isInFuture = date.isAfter(today)
+                val startsLaterToday = date.isEqual(today) && start.isAfter(now)
                 val hasStarted = !(isInFuture || startsLaterToday)
                 EventOption(event, schedule, venue, remaining, capacityLimit, hasStarted)
             }
-            .filter { option -> !option.hasStarted }
-            .sortedWith(compareBy({ it.schedule.date }, { it.schedule.startTime }, { it.event.title }))
+            .filter { option -> option.schedule != null && !option.hasStarted }
+            .sortedWith(compareBy({ it.schedule?.date ?: it.event.date }, { it.schedule?.startTime ?: it.event.startTime }, { it.event.title }))
             .forEach { eventModel.addElement(it) }
 
         eventDropdown.model = eventModel
@@ -494,8 +509,11 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
         val hasStarted = option.hasStarted
 
         eventNameValue.text = event.title
-        eventDateValue.text = schedule.date.format(dateFormatter)
-        eventTimeValue.text = "${schedule.startTime} - ${schedule.endTime}"
+        val date = schedule?.date ?: event.date
+        val start = schedule?.startTime ?: event.startTime
+        val end = schedule?.endTime ?: event.endTime
+        eventDateValue.text = date.format(dateFormatter)
+        eventTimeValue.text = "$start - $end"
         eventVenueValue.text = venue?.let { "${it.name} (${it.city})" } ?: "Venue TBD"
         eventCapacityValue.text = "$remaining / $capacity"
         val description = event.description.ifBlank { "No additional details" }
@@ -503,9 +521,10 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
         eventDescriptionArea.caretPosition = 0
         eventDescriptionArea.toolTipText = if (description.length > 120) description else null
 
-        val canRegister = remaining > 0 && !hasStarted
+        val canRegister = schedule != null && remaining > 0 && !hasStarted
         registerButton.isEnabled = canRegister
         registerButton.toolTipText = when {
+            schedule == null -> "Confirm a schedule to enable registrations"
             !canRegister && remaining <= 0 -> "This event has reached full capacity"
             !canRegister && hasStarted -> "This event has already started"
             else -> null
