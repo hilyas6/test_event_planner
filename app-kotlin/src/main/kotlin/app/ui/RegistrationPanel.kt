@@ -421,6 +421,7 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
                 val hasStarted = !(isInFuture || startsLaterToday)
                 EventOption(event, schedule, venue, remaining, capacityLimit, hasStarted)
             }
+            .filter { option -> !option.hasStarted }
             .sortedWith(compareBy({ it.schedule.date }, { it.schedule.startTime }, { it.event.title }))
             .forEach { eventModel.addElement(it) }
 
