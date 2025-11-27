@@ -42,7 +42,7 @@ object Scheduler {
       else a.getStartTime.isBefore(b.getStartTime)
     }
 
-    val venueUsage = scala.collection.mutable.Map.empty[(String, LocalDate), List[(LocalTime, LocalTime)]]
+    val venueUsage = scala.collection.mutable.Map.empty[(String, LocalDate), List[(LocalTime, LocalTime, Int)]]
     val participantUsage = scala.collection.mutable.Map.empty[String, List[(LocalDate, LocalTime, LocalTime, String)]]
     busyByParticipant.foreach { case (pid, slots) => participantUsage.update(pid, slots) }
 
@@ -64,7 +64,7 @@ object Scheduler {
 
         val assignmentOpt = candidateVenues.to(LazyList).flatMap { venue =>
           searchDates.to(LazyList).collectFirst {
-            case date if venueAvailable(venueUsage.getOrElse((venue.getId, date), Nil), requestedStart, durationMinutes) &&
+            case date if venueAvailable(venueUsage.getOrElse((venue.getId, date), Nil), requestedStart, durationMinutes, event.getExpectedSize, venue.getCapacity) &&
               participantsAvailable(pid => participantUsage.getOrElse(pid, Nil), interestedParticipants, date, requestedStart, durationMinutes) =>
 
               val conflicts = countConflicts(pid => participantUsage.getOrElse(pid, Nil), interestedParticipants, date, requestedStart, durationMinutes)
@@ -79,7 +79,7 @@ object Scheduler {
             results += new ScheduleResult(event.getId, venue.getId, date, start, end, confidence, note, true)
             val dayKey = (venue.getId, date)
             val existing = venueUsage.getOrElse(dayKey, Nil)
-            venueUsage.update(dayKey, (start, end) :: existing)
+            venueUsage.update(dayKey, (start, end, event.getExpectedSize) :: existing)
             interestedParticipants.foreach { pid =>
               val updated = (date, start, end, event.getId) :: participantUsage.getOrElse(pid, Nil)
               participantUsage.update(pid, updated)
@@ -112,11 +112,10 @@ object Scheduler {
     !start.isBefore(DayStart) && !end.isAfter(DayEnd)
   }
 
-  private def venueAvailable(venueBusy: List[(LocalTime, LocalTime)], start: LocalTime, durationMinutes: Long): Boolean = {
+  private def venueAvailable(venueBusy: List[(LocalTime, LocalTime, Int)], start: LocalTime, durationMinutes: Long, expectedSize: Int, venueCapacity: Int): Boolean = {
     val end = start.plusMinutes(durationMinutes)
-    venueBusy.forall { case (s, e) =>
-      !timesOverlap(s, e, start, end)
-    }
+    val usedCapacity = venueBusy.collect { case (s, e, size) if timesOverlap(s, e, start, end) => size }.sum
+    usedCapacity + expectedSize <= venueCapacity
   }
 
   private def participantsAvailable(participantUsage: String => List[(LocalDate, LocalTime, LocalTime, String)],
