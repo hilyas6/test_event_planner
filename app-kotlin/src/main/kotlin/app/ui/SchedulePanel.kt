@@ -203,7 +203,9 @@ class SchedulePanel : JPanel(BorderLayout(15, 15)) {
 
     private fun refreshEventDropdown() {
         val previousId = (eventDropdown.selectedItem as? EventOption)?.event?.id
+        val today = LocalDate.now()
         val events = AppContext.eventService.reload()
+            .filter { !it.date.isBefore(today) }
             .sortedWith(compareBy({ it.date }, { it.startTime }, { it.title }))
         val model = javax.swing.DefaultComboBoxModel<EventOption>()
         events.forEach { model.addElement(EventOption(it)) }
