@@ -57,14 +57,14 @@ class EventFormPanel : JPanel(BorderLayout(15, 15)) {
 
         val formCard = UiTheme.createCard(GridBagLayout())
         val gbc = GridBagConstraints().apply {
-            insets = Insets(8, 8, 8, 8)
+            insets = Insets(6, 6, 6, 6)
             anchor = GridBagConstraints.WEST
             fill = GridBagConstraints.HORIZONTAL
             weightx = 1.0
         }
 
         fun prepare(component: JComponent): JComponent = component.apply {
-            preferredSize = Dimension(240, 30)
+            preferredSize = Dimension(220, 28)
         }
 
         var row = 0
@@ -114,8 +114,15 @@ class EventFormPanel : JPanel(BorderLayout(15, 15)) {
             preferredWidth = 0
         }
 
-        add(formWrapper, BorderLayout.NORTH)
-        add(tableScroll, BorderLayout.CENTER)
+        val content = JPanel().apply {
+            background = UiTheme.backgroundColor
+            layout = javax.swing.BoxLayout(this, javax.swing.BoxLayout.Y_AXIS)
+            add(formWrapper)
+            add(javax.swing.Box.createVerticalStrut(14))
+            add(tableScroll)
+        }
+
+        add(UiTheme.wrapWithScroll(content), BorderLayout.CENTER)
 
         loadEvents()
 

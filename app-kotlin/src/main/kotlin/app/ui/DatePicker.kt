@@ -4,6 +4,7 @@ import java.awt.BorderLayout
 import java.awt.Component
 import java.awt.Dimension
 import java.awt.FlowLayout
+import java.awt.Font
 import java.awt.Window
 import java.awt.Dialog
 import java.time.LocalDate
@@ -49,12 +50,16 @@ class DatePickerField(
     }
 
     private val calendarButton = JButton("📅").apply {
-        margin = java.awt.Insets(2, 8, 2, 8)
+        margin = java.awt.Insets(4, 10, 4, 10)
         toolTipText = "Open calendar"
-        background = UiTheme.highlightColor
+        background = UiTheme.highlightColor.darker()
         foreground = UiTheme.textColor
         isOpaque = true
-        border = BorderFactory.createLineBorder(UiTheme.highlightColor.darker())
+        font = font.deriveFont(Font.BOLD, 18f)
+        border = BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(UiTheme.highlightColor.darker(), 2, true),
+            javax.swing.border.EmptyBorder(2, 6, 2, 6)
+        )
         cursor = java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR)
         isFocusPainted = false
     }
