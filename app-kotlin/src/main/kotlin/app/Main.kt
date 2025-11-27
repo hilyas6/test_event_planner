@@ -29,6 +29,7 @@ fun main() {
         frame.setSize(1200, 720)
         frame.setLocationRelativeTo(null)
 
+        val registrationPanel = RegistrationPanel()
         val tabs = JTabbedPane().apply {
             background = UiTheme.backgroundColor
             foreground = UiTheme.textColor
@@ -36,8 +37,8 @@ fun main() {
         }
         tabs.add("Venues", safePanel("Venues") { VenueFormPanel() })
         tabs.add("Events", safePanel("Events") { EventFormPanel() })
-        tabs.add("Scheduling", safePanel("Scheduling") { SchedulePanel() })
-        tabs.add("Registration", safePanel("Registration") { RegistrationPanel() })
+        tabs.add("Scheduling", safePanel("Scheduling") { SchedulePanel(registrationPanel::refreshAll) })
+        tabs.add("Registration", safePanel("Registration") { registrationPanel })
 
         UiTheme.applyToolbarTheme(tabs)
 
