@@ -42,7 +42,8 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
                 hasStarted -> " • Started"
                 else -> ""
             }
-            return "${event.title} (${schedule.date} $timeRange @ $venueDisplay, $remaining/$capacity spots left)$statusSuffix"
+            val dateText = schedule.date.format(dateFormatter)
+            return "${event.title} ($dateText $timeRange @ $venueDisplay, $remaining/$capacity spots left)$statusSuffix"
         }
     }
 
@@ -104,7 +105,9 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
 
     private var registrationRows: List<RegistrationRow> = emptyList()
 
-    private val dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+    private companion object {
+        val dateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+    }
     private val emailRegex = Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")
     private val phoneRegex = Regex("^[0-9]{11}$")
 
@@ -414,6 +417,7 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
                 val hasStarted = java.time.LocalDateTime.of(schedule.date, schedule.startTime).isBefore(now)
                 EventOption(event, schedule, venue, remaining, capacityLimit, hasStarted)
             }
+            .filter { option -> option.remaining > 0 && !option.hasStarted }
             .sortedWith(compareBy({ it.schedule.date }, { it.schedule.startTime }, { it.event.title }))
             .forEach { eventModel.addElement(it) }
 
