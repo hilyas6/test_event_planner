@@ -1,26 +1,26 @@
 [
-  {
-    "eventId": "evt-tech-strategy-2025",
-    "venueId": "ven-aurora-hall",
-    "date": "2025-09-12",
-    "startTime": "09:00",
-    "endTime": "16:00",
-    "confirmedAt": "2025-05-27T11:15:00"
-  },
-  {
-    "eventId": "evt-design-weekend-2025",
-    "venueId": "ven-downtown-gallery",
-    "date": "2025-09-13",
-    "startTime": "11:00",
-    "endTime": "16:00",
-    "confirmedAt": "2025-05-27T11:45:00"
-  },
-  {
-    "eventId": "evt-clean-energy-roundtable",
-    "venueId": "ven-lakeside",
-    "date": "2025-10-02",
-    "startTime": "10:00",
-    "endTime": "13:00",
-    "confirmedAt": "2025-05-28T08:20:00"
-  }
+    {
+        "eventId": "19be36f3-995a-41d3-84d1-730149111fe7",
+        "venueId": "0689c35a-e7a2-4648-8f2f-9cd653f9d32a",
+        "date": "2025-11-30",
+        "startTime": "07:00",
+        "endTime": "10:30",
+        "confirmedAt": "2025-11-27T17:47:43.646792"
+    },
+    {
+        "eventId": "8bf5965e-80ab-4c1e-9476-2969e5c522ea",
+        "venueId": "99a1fcff-e122-436e-903c-c8df0628af62",
+        "date": "2025-11-27",
+        "startTime": "09:00",
+        "endTime": "11:00",
+        "confirmedAt": "2025-11-27T17:49:20.033032"
+    },
+    {
+        "eventId": "1505daa3-7a98-4c86-b6d2-65495c803b5b",
+        "venueId": "99a1fcff-e122-436e-903c-c8df0628af62",
+        "date": "2025-11-27",
+        "startTime": "10:15",
+        "endTime": "15:15",
+        "confirmedAt": "2025-11-27T17:49:23.700441"
+    }
 ]

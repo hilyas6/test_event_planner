@@ -1,26 +1,20 @@
 [
-  {
-    "id": "ven-aurora-hall",
-    "name": "Aurora Conference Hall",
-    "capacity": 240,
-    "city": "New York"
-  },
-  {
-    "id": "ven-lakeside",
-    "name": "Lakeside Pavilion",
-    "capacity": 150,
-    "city": "Chicago"
-  },
-  {
-    "id": "ven-summit-center",
-    "name": "Summit Innovation Center",
-    "capacity": 320,
-    "city": "San Francisco"
-  },
-  {
-    "id": "ven-downtown-gallery",
-    "name": "Downtown Art Gallery",
-    "capacity": 90,
-    "city": "Austin"
-  }
+    {
+        "id": "5878bce9-6b44-48f5-b7f5-9a9f901fa37e",
+        "name": "takla",
+        "capacity": 2,
+        "city": "ben10"
+    },
+    {
+        "id": "0689c35a-e7a2-4648-8f2f-9cd653f9d32a",
+        "name": "hanzla pagi",
+        "capacity": 2,
+        "city": "your bed"
+    },
+    {
+        "id": "99a1fcff-e122-436e-903c-c8df0628af62",
+        "name": "Gherkin",
+        "capacity": 50,
+        "city": "London"
+    }
 ]

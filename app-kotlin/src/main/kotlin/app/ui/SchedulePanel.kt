@@ -48,7 +48,7 @@ class SchedulePanel : JPanel(BorderLayout(15, 15)) {
     private val removeConfirmedButton = JButton("Remove Selected")
 
     private val slotTableModel = object : DefaultTableModel(
-        arrayOf("Rank", "Venue", "Date", "Start", "End", "Capacity Left"),
+        arrayOf("Rank", "Venue", "Date", "Start", "End", "Remaining Venue Capacity"),
         0
     ) {
         override fun isCellEditable(row: Int, column: Int) = false
