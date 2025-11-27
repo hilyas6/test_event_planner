@@ -105,7 +105,9 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
 
     private var registrationRows: List<RegistrationRow> = emptyList()
 
-    private val dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+    private companion object {
+        val dateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+    }
     private val emailRegex = Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")
     private val phoneRegex = Regex("^[0-9]{11}$")
 

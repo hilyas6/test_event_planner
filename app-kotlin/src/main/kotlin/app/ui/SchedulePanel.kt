@@ -35,7 +35,9 @@ class SchedulePanel : JPanel(BorderLayout(15, 15)) {
         }
     }
 
-    private val dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+    private companion object {
+        val dateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+    }
 
     private val eventDropdown = JComboBox<EventOption>()
     private val plannedSizeSpinner = JSpinner(SpinnerNumberModel(50, 1, 100000, 1))
