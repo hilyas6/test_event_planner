@@ -26,7 +26,7 @@ import javax.swing.ListSelectionModel
 import javax.swing.SpinnerNumberModel
 import javax.swing.table.DefaultTableModel
 
-class SchedulePanel : JPanel(BorderLayout(15, 15)) {
+class SchedulePanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(BorderLayout(15, 15)) {
 
     private data class EventOption(val event: core.model.Event) {
         override fun toString(): String {
@@ -337,6 +337,7 @@ class SchedulePanel : JPanel(BorderLayout(15, 15)) {
             JOptionPane.showMessageDialog(this, "Confirmed schedule for '${option.event.title}'.")
             loadConfirmedSchedules()
             refreshEventDropdown()
+            onDataChanged?.invoke()
         } catch (e: Exception) {
             e.printStackTrace()
             JOptionPane.showMessageDialog(this, "Unable to confirm schedule: ${e.message}")
@@ -354,6 +355,7 @@ class SchedulePanel : JPanel(BorderLayout(15, 15)) {
         AppContext.scheduledEventService.removeSchedule(eventId)
         loadConfirmedSchedules()
         refreshEventDropdown()
+        onDataChanged?.invoke()
     }
 
     private fun onBuildSchedule() {
@@ -461,6 +463,7 @@ class SchedulePanel : JPanel(BorderLayout(15, 15)) {
             refreshEventDropdown()
             val title = scheduleTableModel.getValueAt(selectedRow, 0) as? String ?: schedule.eventId
             JOptionPane.showMessageDialog(this, "Confirmed schedule for '$title'.")
+            onDataChanged?.invoke()
         } catch (e: Exception) {
             e.printStackTrace()
             JOptionPane.showMessageDialog(this, "Unable to confirm schedule: ${e.message}")

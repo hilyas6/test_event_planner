@@ -404,7 +404,7 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
         }
     }
 
-    private fun refreshAll() {
+    fun refreshAll() {
         refreshDropdowns()
         refreshTable()
     }
