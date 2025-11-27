@@ -202,8 +202,10 @@ class SchedulePanel : JPanel(BorderLayout(15, 15)) {
     private fun refreshEventDropdown() {
         val previousId = (eventDropdown.selectedItem as? EventOption)?.event?.id
         val today = LocalDate.now()
+        val scheduledEventIds = AppContext.scheduledEventService.reload().map { it.eventId }.toSet()
         val events = AppContext.eventService.reload()
             .filter { !it.date.isBefore(today) }
+            .filterNot { scheduledEventIds.contains(it.id) }
             .sortedWith(compareBy({ it.date }, { it.startTime }, { it.title }))
         val model = javax.swing.DefaultComboBoxModel<EventOption>()
         events.forEach { model.addElement(EventOption(it)) }
@@ -357,16 +359,18 @@ class SchedulePanel : JPanel(BorderLayout(15, 15)) {
             clearScheduleTable()
 
             val today = LocalDate.now()
+            val scheduledEventIds = AppContext.scheduledEventService.reload().map { it.eventId }.toSet()
             val eventsList = AppContext.eventService.reload()
                 .filter { !it.date.isBefore(today) }
+            val unscheduledEvents = eventsList.filterNot { scheduledEventIds.contains(it.id) }
             val venuesList = AppContext.venueService.reload()
             val registrationsList = AppContext.registrationService.reload()
-                .filter { reg -> eventsList.any { it.id == reg.eventId } }
+                .filter { reg -> unscheduledEvents.any { it.id == reg.eventId } }
 
             val preferenceScores = java.util.HashMap<String, Double>()
             val registrationsByEvent = registrationsList.groupBy { it.eventId }
 
-            eventsList.forEach { event ->
+            unscheduledEvents.forEach { event ->
                 val registeredCount = registrationsByEvent[event.id]?.size ?: 0
                 val demandRatio = if (event.expectedSize > 0) registeredCount.toDouble() / event.expectedSize else 0.0
                 val score = event.expectedSize * 0.25 + registeredCount * 1.5 + demandRatio
@@ -374,7 +378,7 @@ class SchedulePanel : JPanel(BorderLayout(15, 15)) {
             }
 
             val result = Scheduler.buildOptimizedSchedule(
-                java.util.ArrayList(eventsList),
+                java.util.ArrayList(unscheduledEvents),
                 java.util.ArrayList(venuesList),
                 java.util.ArrayList(registrationsList),
                 preferenceScores

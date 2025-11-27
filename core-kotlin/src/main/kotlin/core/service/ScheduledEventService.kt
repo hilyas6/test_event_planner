@@ -28,11 +28,11 @@ class ScheduledEventService(
         val existing = eventService.eventById(eventId)
             ?: throw IllegalArgumentException("Event not found")
 
-        val alreadyScheduledSameDay = repo.allScheduledEvents()
-            .firstOrNull { it.eventId == eventId && it.date == date }
+        val alreadyScheduled = repo.allScheduledEvents()
+            .firstOrNull { it.eventId == eventId }
 
-        if (alreadyScheduledSameDay != null) {
-            throw IllegalStateException("Event is already scheduled on $date. Remove it before booking another slot that day.")
+        if (alreadyScheduled != null) {
+            throw IllegalStateException("Event is already scheduled. Remove the confirmed schedule before booking again.")
         }
 
         ensureVenueCapacity(eventId, normalizedVenue, date, startTime, endTime)
