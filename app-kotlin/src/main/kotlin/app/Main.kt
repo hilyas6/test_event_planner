@@ -23,11 +23,14 @@ fun main() {
 
     SwingUtilities.invokeLater {
         try { UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName()) } catch (_: Exception) {}
+        UiTheme.applyGlobalDefaults()
 
         val frame = JFrame("Event Planner")
         frame.defaultCloseOperation = JFrame.EXIT_ON_CLOSE
         frame.setSize(1200, 720)
         frame.setLocationRelativeTo(null)
+        frame.minimumSize = java.awt.Dimension(1040, 640)
+        frame.contentPane.background = UiTheme.backgroundColor
 
         val registrationPanel = RegistrationPanel()
         val tabs = JTabbedPane().apply {

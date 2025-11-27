@@ -46,22 +46,15 @@ class DatePickerField(
 
     val spinner = JSpinner(spinnerModel).apply {
         editor = JSpinner.DateEditor(this, "dd/MM/yyyy")
-        preferredSize = Dimension(140, preferredSize.height)
+        preferredSize = Dimension(148, preferredSize.height)
+        font = font.deriveFont(Font.PLAIN, 14f)
     }
 
     private val calendarButton = JButton("📅").apply {
         margin = java.awt.Insets(4, 10, 4, 10)
         toolTipText = "Open calendar"
-        background = UiTheme.highlightColor.darker()
-        foreground = UiTheme.textColor
-        isOpaque = true
         font = font.deriveFont(Font.BOLD, 18f)
-        border = BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(UiTheme.highlightColor.darker(), 2, true),
-            javax.swing.border.EmptyBorder(2, 6, 2, 6)
-        )
-        cursor = java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR)
-        isFocusPainted = false
+        UiTheme.styleSoftButton(this)
     }
 
     val component: JPanel = JPanel(BorderLayout(6, 0)).apply {
@@ -127,22 +120,13 @@ private class CalendarDialog(
         val header = JPanel(BorderLayout()).apply {
             background = UiTheme.cardColor
             val prev = JButton("◀").apply {
-                addActionListener {
-                    shiftMonth(-1)
-                }
+                addActionListener { shiftMonth(-1) }
             }
             val next = JButton("▶").apply {
-                addActionListener {
-                    shiftMonth(1)
-                }
+                addActionListener { shiftMonth(1) }
             }
             listOf(prev, next).forEach { button ->
-                button.background = UiTheme.buttonColor
-                button.foreground = java.awt.Color.WHITE
-                button.isOpaque = true
-                button.border = BorderFactory.createLineBorder(UiTheme.buttonColor.darker())
-                button.isFocusPainted = false
-                button.cursor = java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR)
+                UiTheme.stylePrimaryButton(button)
                 button.preferredSize = Dimension(42, 30)
             }
             monthLabel.horizontalAlignment = JLabel.CENTER
@@ -171,8 +155,8 @@ private class CalendarDialog(
 
         val actionPanel = JPanel(FlowLayout(FlowLayout.RIGHT)).apply {
             background = UiTheme.cardColor
-            val cancel = JButton("Cancel").apply {
-                UiTheme.stylePrimaryButton(this)
+            val cancel = JButton("Close").apply {
+                UiTheme.styleSoftButton(this)
                 addActionListener { dispose() }
             }
             add(cancel)
