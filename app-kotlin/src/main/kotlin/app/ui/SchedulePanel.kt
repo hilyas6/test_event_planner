@@ -30,12 +30,14 @@ class SchedulePanel : JPanel(BorderLayout(15, 15)) {
 
     private data class EventOption(val event: core.model.Event) {
         override fun toString(): String {
-            val dateText = "${event.date} ${event.startTime}-${event.endTime}"
+            val dateText = "${event.date.format(dateFormatter)} ${event.startTime}-${event.endTime}"
             return "${event.title} ($dateText)"
         }
     }
 
-    private val dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+    private companion object {
+        val dateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+    }
 
     private val eventDropdown = JComboBox<EventOption>()
     private val plannedSizeSpinner = JSpinner(SpinnerNumberModel(50, 1, 100000, 1))
@@ -56,7 +58,7 @@ class SchedulePanel : JPanel(BorderLayout(15, 15)) {
     private val slotTable = JTable(slotTableModel)
 
     private val scheduleTableModel = object : DefaultTableModel(
-        arrayOf("Event", "Date", "Start", "End", "Venue"),
+        arrayOf("Event", "Date", "Start", "End", "Venue", "Remaining Venue Capacity"),
         0
     ) {
         override fun isCellEditable(row: Int, column: Int) = false
@@ -389,10 +391,24 @@ class SchedulePanel : JPanel(BorderLayout(15, 15)) {
             val evMap = eventsList.associateBy { it.id }
             val venueMap = venuesList.associateBy { it.id }
 
+            val eventsByVenueDate = eventsList
+                .filter { it.venueId != null }
+                .groupBy { it.venueId!! to it.date }
+
             currentScheduleResults.forEach { r ->
                 val venueName = r.venueId.takeIf { it.isNotBlank() }?.let { venueMap[it]?.name }
                     ?: if (r.scheduled) "(venue TBD)" else "(not scheduled)"
                 val title = evMap[r.eventId]?.title ?: r.eventId
+                val remainingCapacity = r.venueId.takeIf { it.isNotBlank() }?.let { venueId ->
+                    val venueCapacity = venueMap[venueId]?.capacity ?: return@let null
+                    val overlapping = eventsByVenueDate.getOrDefault(venueId to r.assignedDate, emptyList())
+                        .filter { event ->
+                            timesOverlap(event.startTime, event.endTime, r.startTime, r.endTime)
+                        }
+                    val used = overlapping.sumOf { it.expectedSize }
+                    val plannedSize = evMap[r.eventId]?.expectedSize ?: 0
+                    (venueCapacity - used - plannedSize).coerceAtLeast(0)
+                }
 
                 scheduleTableModel.addRow(
                     arrayOf(
@@ -400,7 +416,8 @@ class SchedulePanel : JPanel(BorderLayout(15, 15)) {
                         r.assignedDate.format(dateFormatter),
                         r.startTime.toString(),
                         r.endTime.toString(),
-                        venueName
+                        venueName,
+                        remainingCapacity?.toString() ?: "-"
                     )
                 )
             }

@@ -9,6 +9,7 @@ import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
 import java.awt.Insets
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import javax.swing.BorderFactory
 import javax.swing.DefaultComboBoxModel
@@ -42,7 +43,8 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
                 hasStarted -> " • Started"
                 else -> ""
             }
-            return "${event.title} (${schedule.date} $timeRange @ $venueDisplay, $remaining/$capacity spots left)$statusSuffix"
+            val dateText = schedule.date.format(dateFormatter)
+            return "${event.title} ($dateText $timeRange @ $venueDisplay, $remaining/$capacity spots left)$statusSuffix"
         }
     }
 
@@ -104,7 +106,9 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
 
     private var registrationRows: List<RegistrationRow> = emptyList()
 
-    private val dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+    private companion object {
+        val dateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+    }
     private val emailRegex = Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")
     private val phoneRegex = Regex("^[0-9]{11}$")
 
@@ -403,7 +407,8 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
         val venues = AppContext.venueService.reload()
         val venueMap = venues.associateBy { it.id }
         val eventMap = events.associateBy { it.id }
-        val now = java.time.LocalDateTime.now()
+        val today = LocalDate.now()
+        val now = LocalTime.now()
 
         schedules
             .mapNotNull { schedule ->
@@ -411,9 +416,12 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
                 val capacityLimit = AppContext.registrationService.capacityLimit(event)
                 val remaining = AppContext.registrationService.remainingCapacity(event)
                 val venue = schedule.venueId?.let { venueMap[it] }
-                val hasStarted = java.time.LocalDateTime.of(schedule.date, schedule.startTime).isBefore(now)
+                val isInFuture = schedule.date.isAfter(today)
+                val startsLaterToday = schedule.date.isEqual(today) && schedule.startTime.isAfter(now)
+                val hasStarted = !(isInFuture || startsLaterToday)
                 EventOption(event, schedule, venue, remaining, capacityLimit, hasStarted)
             }
+            .filter { option -> option.remaining > 0 && !option.hasStarted }
             .sortedWith(compareBy({ it.schedule.date }, { it.schedule.startTime }, { it.event.title }))
             .forEach { eventModel.addElement(it) }
 
@@ -423,7 +431,7 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
             eventDropdown.isEnabled = false
             eventDropdown.toolTipText = "No confirmed schedules available"
             registerButton.isEnabled = false
-            registerButton.toolTipText = "Add confirmed schedules to register participants"
+            registerButton.toolTipText = "No upcoming events with available capacity"
         } else {
             eventDropdown.isEnabled = true
             eventDropdown.toolTipText = null
