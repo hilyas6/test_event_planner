@@ -365,7 +365,7 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
             )
             JOptionPane.showMessageDialog(
                 this,
-                "✔ Registered ${participant.firstName} ${participant.lastName} for ${eventOption.event.title}"
+                "Registered ${participant.firstName} ${participant.lastName} for ${eventOption.event.title}"
             )
             clearParticipantForm()
             refreshAll()
