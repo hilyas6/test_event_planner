@@ -111,7 +111,7 @@ class VenueFormPanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(B
             }
 
             AppContext.venueService.addVenue(name, capacity, city)
-            JOptionPane.showMessageDialog(this, "✅ Venue '$name' added!")
+            JOptionPane.showMessageDialog(this, "✔ Venue '$name' added!")
             clearForm()
             refreshTable()
             onDataChanged?.invoke()
@@ -129,7 +129,7 @@ class VenueFormPanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(B
         val id = tableModel.getValueAt(row, 0) as String
         val name = tableModel.getValueAt(row, 1) as String
         AppContext.venueService.deleteVenueById(id)
-        JOptionPane.showMessageDialog(this, "🗑 Venue '$name' removed!")
+        JOptionPane.showMessageDialog(this, "✔ Venue '$name' removed!")
         refreshTable()
         onDataChanged?.invoke()
     }
