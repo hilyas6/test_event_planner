@@ -202,12 +202,12 @@ class EventFormPanel : JPanel(BorderLayout(15, 15)) {
                 organiserName = organiserName,
                 organiserEmail = organiserEmail
             )
-            JOptionPane.showMessageDialog(this, "✅ Event added successfully!")
+            JOptionPane.showMessageDialog(this, "✔ Event added successfully!")
             clearForm()
             loadEvents()
         } catch (e: Exception) {
             e.printStackTrace()
-            JOptionPane.showMessageDialog(this, "⚠️ Error: ${e.message}")
+            JOptionPane.showMessageDialog(this, "⚠ Error: ${e.message}")
         }
     }
 
