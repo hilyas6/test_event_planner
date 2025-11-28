@@ -32,7 +32,13 @@ object UiTheme {
     val buttonColor: Color = Color(0x36, 0x70, 0xF4)
     val highlightColor: Color = Color(0xB9, 0xC6, 0xD9)
 
-    private val baseFont: Font = Font("Segoe UI", Font.PLAIN, 14)
+    private val baseFont: Font = Font("Segoe UI", Font.PLAIN, 14).let { candidate ->
+        // Fall back to the current look-and-feel's default font when Segoe UI isn't available so
+        // Windows and macOS render the same spacing and sizing.
+        if (candidate.family.equals("dialog", ignoreCase = true)) {
+            UIManager.getFont("defaultFont") ?: candidate
+        } else candidate
+    }
 
     fun applyGlobalDefaults() {
         val fontKeys = listOf(
@@ -56,11 +62,15 @@ object UiTheme {
         UIManager.put("Panel.background", backgroundColor)
         UIManager.put("ScrollPane.background", backgroundColor)
         UIManager.put("TabbedPane.background", backgroundColor)
+        UIManager.put("TabbedPane.selectedForeground", textColor)
         UIManager.put("Table.gridColor", borderColor)
         UIManager.put("Table.selectionBackground", highlightColor.darker())
         UIManager.put("Table.selectionForeground", Color.WHITE)
         UIManager.put("OptionPane.background", backgroundColor)
         UIManager.put("OptionPane.messageForeground", textColor)
+        UIManager.put("Button.background", cardColor)
+        UIManager.put("Button.foreground", textColor)
+        UIManager.put("Button.font", baseFont.deriveFont(Font.BOLD, 13f))
     }
 
     fun createCard(layout: LayoutManager = GridBagLayout()): JPanel = JPanel(layout).apply {

@@ -22,7 +22,12 @@ fun main() {
     }
 
     SwingUtilities.invokeLater {
-        try { UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName()) } catch (_: Exception) {}
+        // Use Nimbus everywhere to avoid platform-specific rendering differences (e.g. buttons
+        // disappearing on Windows with newer JDKs). If Nimbus is unavailable, fall back to the
+        // system L&F.
+        try { UIManager.setLookAndFeel("javax.swing.plaf.nimbus.NimbusLookAndFeel") } catch (_: Exception) {
+            try { UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName()) } catch (_: Exception) {}
+        }
         UiTheme.applyGlobalDefaults()
 
         val frame = JFrame("Event Planner")
