@@ -54,21 +54,27 @@ class VenueFormPanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(B
             preferredSize = Dimension(180, 28)
         }
 
+        fun JComponent.tight(): JComponent = apply {
+            preferredSize = Dimension(120, 28)
+        }
+
         var row = 0
-        fun addRow(label: String, component: JComponent) {
+        fun addRow(label: String, component: JComponent, tight: Boolean = false) {
             gbc.gridx = 0
             gbc.gridy = row
             gbc.weightx = 0.0
             formCard.add(UiTheme.styleLabel(JLabel(label), bold = true), gbc)
 
             gbc.gridx = 1
-            gbc.weightx = 1.0
-            formCard.add(component.compact(), gbc)
+            gbc.weightx = if (tight) 0.0 else 1.0
+            gbc.fill = if (tight) GridBagConstraints.NONE else GridBagConstraints.HORIZONTAL
+            formCard.add(if (tight) component.tight() else component.compact(), gbc)
+            gbc.fill = GridBagConstraints.HORIZONTAL
             row++
         }
 
         addRow("Venue Name:", nameField)
-        addRow("Capacity:", capacityField)
+        addRow("Capacity:", capacityField, tight = true)
         addRow("Location:", cityField)
 
         val buttonPanel = UiTheme.createButtonRow(addButton, deleteButton, refreshButton)
@@ -111,7 +117,7 @@ class VenueFormPanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(B
             }
 
             AppContext.venueService.addVenue(name, capacity, city)
-            JOptionPane.showMessageDialog(this, "✔ Venue '$name' added!")
+            JOptionPane.showMessageDialog(this, "Venue '$name' added.")
             clearForm()
             refreshTable()
             onDataChanged?.invoke()
@@ -129,7 +135,7 @@ class VenueFormPanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(B
         val id = tableModel.getValueAt(row, 0) as String
         val name = tableModel.getValueAt(row, 1) as String
         AppContext.venueService.deleteVenueById(id)
-        JOptionPane.showMessageDialog(this, "✔ Venue '$name' removed!")
+        JOptionPane.showMessageDialog(this, "Venue '$name' removed.")
         refreshTable()
         onDataChanged?.invoke()
     }

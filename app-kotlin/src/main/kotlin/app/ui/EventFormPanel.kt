@@ -63,20 +63,22 @@ class EventFormPanel : JPanel(BorderLayout(15, 15)) {
             weightx = 1.0
         }
 
-        fun prepare(component: JComponent): JComponent = component.apply {
-            preferredSize = Dimension(220, 28)
+        fun prepare(component: JComponent, compact: Boolean = false): JComponent = component.apply {
+            preferredSize = Dimension(if (compact) 160 else 220, 28)
         }
 
         var row = 0
-        fun addRow(label: String, component: JComponent) {
+        fun addRow(label: String, component: JComponent, compact: Boolean = false) {
             gbc.gridx = 0
             gbc.gridy = row
             gbc.weightx = 0.0
             formCard.add(UiTheme.styleLabel(JLabel(label), bold = true), gbc)
 
             gbc.gridx = 1
-            gbc.weightx = 1.0
-            formCard.add(prepare(component), gbc)
+            gbc.weightx = if (compact) 0.0 else 1.0
+            gbc.fill = if (compact) GridBagConstraints.NONE else GridBagConstraints.HORIZONTAL
+            formCard.add(prepare(component, compact), gbc)
+            gbc.fill = GridBagConstraints.HORIZONTAL
             row++
         }
 
@@ -86,7 +88,7 @@ class EventFormPanel : JPanel(BorderLayout(15, 15)) {
         addRow("Date:", dateField.component)
         addRow("Start Time:", startTimeBox)
         addRow("End Time:", endTimeBox)
-        addRow("Expected Size:", expectedSizeField)
+        addRow("Expected Size:", expectedSizeField, compact = true)
         addRow("Organiser Name:", organiserNameField)
         addRow("Organiser Email:", organiserEmailField)
 
@@ -202,12 +204,12 @@ class EventFormPanel : JPanel(BorderLayout(15, 15)) {
                 organiserName = organiserName,
                 organiserEmail = organiserEmail
             )
-            JOptionPane.showMessageDialog(this, "✔ Event added successfully!")
+            JOptionPane.showMessageDialog(this, "Event added successfully.")
             clearForm()
             loadEvents()
         } catch (e: Exception) {
             e.printStackTrace()
-            JOptionPane.showMessageDialog(this, "⚠ Error: ${e.message}")
+            JOptionPane.showMessageDialog(this, "Error: ${e.message}")
         }
     }
 

@@ -48,9 +48,15 @@ fun main() {
         tabs.add("Scheduling", safePanel("Scheduling") { SchedulePanel(registrationPanel::refreshAll) })
         tabs.add("Registration", safePanel("Registration") { registrationPanel })
 
-        UiTheme.applyToolbarTheme(tabs)
+        val navigation = UiTheme.applyToolbarTheme(tabs)
 
-        frame.contentPane.add(tabs, BorderLayout.CENTER)
+        val content = javax.swing.JPanel(BorderLayout()).apply {
+            background = UiTheme.backgroundColor
+            add(navigation, BorderLayout.NORTH)
+            add(tabs, BorderLayout.CENTER)
+        }
+
+        frame.contentPane.add(content, BorderLayout.CENTER)
         frame.isVisible = true
         println("Window should now be visible.")
     }

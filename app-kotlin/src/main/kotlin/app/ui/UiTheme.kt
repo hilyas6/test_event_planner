@@ -4,6 +4,7 @@ import java.awt.Color
 import java.awt.Cursor
 import java.awt.Dimension
 import java.awt.Font
+import java.awt.Graphics
 import java.awt.Insets
 import java.awt.GridBagLayout
 import java.awt.LayoutManager
@@ -19,6 +20,7 @@ import javax.swing.ScrollPaneConstants
 import javax.swing.SwingConstants
 import javax.swing.UIManager
 import javax.swing.border.EmptyBorder
+import javax.swing.plaf.basic.BasicTabbedPaneUI
 
 /**
  * Shared colours and helpers so every panel keeps a consistent look-and-feel.
@@ -120,14 +122,15 @@ object UiTheme {
         border = EmptyBorder(12, 0, 0, 0)
     }
 
-    fun applyToolbarTheme(tabbedPane: JTabbedPane) {
+    fun applyToolbarTheme(tabbedPane: JTabbedPane): JPanel {
         tabbedPane.background = backgroundColor
         tabbedPane.isOpaque = false
-        tabbedPane.border = BorderFactory.createCompoundBorder(
-            BorderFactory.createMatteBorder(0, 0, 1, 0, borderColor),
-            EmptyBorder(12, 18, 4, 18)
-        )
+        tabbedPane.border = EmptyBorder(0, 0, 0, 0)
         tabbedPane.tabLayoutPolicy = JTabbedPane.SCROLL_TAB_LAYOUT
+        tabbedPane.setUI(object : BasicTabbedPaneUI() {
+            override fun calculateTabAreaHeight(tabPlacement: Int, runCount: Int, maxTabHeight: Int): Int = 0
+            override fun paintTabArea(g: Graphics?, tabPlacement: Int, selectedIndex: Int) {}
+        })
 
         val buttons = mutableListOf<JToggleButton>()
 
@@ -143,21 +146,13 @@ object UiTheme {
                 horizontalAlignment = SwingConstants.CENTER
                 preferredSize = Dimension(150, 38)
                 border = EmptyBorder(0, 0, 0, 0)
-                addActionListener {
-                    val currentIndex = tabbedPane.indexOfTabComponent(this)
-                    if (currentIndex >= 0) {
-                        tabbedPane.selectedIndex = currentIndex
-                    }
-                }
+                addActionListener { tabbedPane.selectedIndex = index }
             }
-            tabbedPane.setTabComponentAt(index, button)
             buttons += button
         }
 
         fun refreshSelection() {
-            buttons.forEach { button ->
-                val idx = tabbedPane.indexOfTabComponent(button)
-                if (idx < 0) return@forEach
+            buttons.forEachIndexed { idx, button ->
                 val selected = tabbedPane.selectedIndex == idx
                 val background = if (selected) buttonColor else cardColor
                 val foreground = if (selected) Color.WHITE else textColor
@@ -174,6 +169,15 @@ object UiTheme {
 
         tabbedPane.addChangeListener { refreshSelection() }
         refreshSelection()
+
+        return JPanel(java.awt.FlowLayout(java.awt.FlowLayout.CENTER, 18, 0)).apply {
+            background = backgroundColor
+            border = BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, borderColor),
+                EmptyBorder(12, 18, 12, 18)
+            )
+            buttons.forEach { add(it) }
+        }
     }
 
     fun styleTable(table: JTable) {
