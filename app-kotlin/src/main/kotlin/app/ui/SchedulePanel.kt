@@ -50,7 +50,7 @@ class SchedulePanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(Bo
     private val removeConfirmedButton = JButton("Remove Selected")
 
     private val slotTableModel = object : DefaultTableModel(
-        arrayOf("Rank", "Venue", "Date", "Start", "End", "Remaining Venue Capacity"),
+        arrayOf("Rank", "Venue", "Date", "Start", "End", "Current Venue Capacity"),
         0
     ) {
         override fun isCellEditable(row: Int, column: Int) = false
@@ -58,7 +58,7 @@ class SchedulePanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(Bo
     private val slotTable = JTable(slotTableModel)
 
     private val scheduleTableModel = object : DefaultTableModel(
-        arrayOf("Event", "Date", "Start", "End", "Venue", "Remaining Venue Capacity"),
+        arrayOf("Event", "Date", "Start", "End", "Venue", "Current Venue Capacity"),
         0
     ) {
         override fun isCellEditable(row: Int, column: Int) = false
@@ -289,7 +289,7 @@ class SchedulePanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(Bo
                                 timesOverlap(event.startTime, event.endTime, suggestion.startTime, suggestion.endTime)
                             }
                         val used = overlapping.sumOf { it.expectedSize }
-                        (venueCapacity - used - planned).coerceAtLeast(0)
+                        (venueCapacity - used).coerceAtLeast(0)
                     }
                     val rankLabel = if (index == 0) "⭐ #1" else "#${index + 1}"
                     slotTableModel.addRow(
@@ -404,15 +404,14 @@ class SchedulePanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(Bo
                 val venueName = r.venueId.takeIf { it.isNotBlank() }?.let { venueMap[it]?.name }
                     ?: if (r.scheduled) "(venue TBD)" else "(not scheduled)"
                 val title = evMap[r.eventId]?.title ?: r.eventId
-                val remainingCapacity = r.venueId.takeIf { it.isNotBlank() }?.let { venueId ->
+                val currentCapacity = r.venueId.takeIf { it.isNotBlank() }?.let { venueId ->
                     val venueCapacity = venueMap[venueId]?.capacity ?: return@let null
                     val overlapping = eventsByVenueDate.getOrDefault(venueId to r.assignedDate, emptyList())
                         .filter { event ->
                             timesOverlap(event.startTime, event.endTime, r.startTime, r.endTime)
                         }
                     val used = overlapping.sumOf { it.expectedSize }
-                    val plannedSize = evMap[r.eventId]?.expectedSize ?: 0
-                    (venueCapacity - used - plannedSize).coerceAtLeast(0)
+                    (venueCapacity - used).coerceAtLeast(0)
                 }
 
                 scheduleTableModel.addRow(
@@ -422,7 +421,7 @@ class SchedulePanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(Bo
                         r.startTime.toString(),
                         r.endTime.toString(),
                         venueName,
-                        remainingCapacity?.toString() ?: "-"
+                        currentCapacity?.toString() ?: "-"
                     )
                 )
             }
