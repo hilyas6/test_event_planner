@@ -50,10 +50,10 @@ class DatePickerField(
         font = font.deriveFont(Font.PLAIN, 14f)
     }
 
-    private val calendarButton = JButton("📅").apply {
-        margin = java.awt.Insets(4, 10, 4, 10)
+    private val calendarButton = JButton("Calendar").apply {
+        margin = java.awt.Insets(6, 12, 6, 12)
         toolTipText = "Open calendar"
-        font = font.deriveFont(Font.BOLD, 18f)
+        font = font.deriveFont(Font.BOLD, 14f)
         UiTheme.styleSoftButton(this)
     }
 
