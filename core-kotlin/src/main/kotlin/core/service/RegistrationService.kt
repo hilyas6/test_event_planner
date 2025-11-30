@@ -16,7 +16,7 @@ class RegistrationService(
     private val registrationRepository: RegistrationRepository,
     private val scheduledEventRepository: ScheduledEventRepository
 ) {
-    /** Convenience wrapper to fetch every registration record. */
+    /** Convenience wrapper to get every registration record. */
     fun all(): List<Registration> = registrationRepository.allRegistrations()
 
 

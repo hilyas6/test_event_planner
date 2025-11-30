@@ -6,7 +6,7 @@ import java.util.*
 
 class VenueService(private val venueRepository: VenueRepository) {
 
-    /** Lists every venue record. */
+    /** Shows every veniu record. */
     fun all(): List<Venue> = venueRepository.allVenues()
 
     fun addVenue(name: String, capacity: Int, city: String) {

@@ -173,7 +173,7 @@ class EventFormPanel : JPanel(BorderLayout(15, 15)) {
 
     /**
      * Validates the form and sends the event to the service layer.
-     * User-friendly error messages keep the Swing UI from crashing on invalid input.
+     * User friendlly error messages keep the Swing UI from crashing on invalid input.
      */
     private fun onAddEvent() {
         val title = titleField.text.trim()
@@ -224,7 +224,7 @@ class EventFormPanel : JPanel(BorderLayout(15, 15)) {
         }
     }
 
-    /** Remove the currently selected event from storage. */
+    /** Removes the currently selected event from storage. */
     private fun onDeleteEvent() {
         val selectedRow = eventTable.selectedRow
         if (selectedRow == -1) {
@@ -237,7 +237,7 @@ class EventFormPanel : JPanel(BorderLayout(15, 15)) {
         loadEvents()
     }
 
-    /** Reset all inputs back to sensible defaults. */
+    /** Reset all inputs back to defaults values selected*/
     private fun clearForm() {
         titleField.text = ""
         descriptionField.text = ""

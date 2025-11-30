@@ -27,8 +27,8 @@ import javax.swing.SpinnerNumberModel
 import javax.swing.table.DefaultTableModel
 
 /**
- * Coordinates the automated scheduling workflow: propose slots, preview schedules,
- * confirm selections, and list confirmed events.
+ * Manages the automated scheduling system: proposes slots, previews schedules,
+ * confirms selections, and lists confirmed events.
  */
 class SchedulePanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(BorderLayout(15, 15)) {
 
@@ -117,7 +117,7 @@ class SchedulePanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(Bo
     }
 
     /**
-     * Apply consistent styling and hide internal IDs where necessary.
+     * Makes consistent styling and hides internal IDs where necessary.
      */
     private fun configureTables() {
         listOf(slotTable, scheduleTable, confirmedTable).forEach { table ->
@@ -208,7 +208,7 @@ class SchedulePanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(Bo
         return card
     }
 
-    /** Reload dropdown options and confirmed schedules, clearing transient suggestion tables. */
+    /** Reloaads dropdown options and confirmed schedules, clearing transient suggestion tables. */
     private fun refreshData() {
         refreshEventDropdown()
         loadConfirmedSchedules()
@@ -216,7 +216,7 @@ class SchedulePanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(Bo
     }
 
     /**
-     * Populate the event selector with only future, unscheduled events.
+     * Adds event selector with only future, unscheduled events.
      */
     private fun refreshEventDropdown() {
         val previousId = (eventDropdown.selectedItem as? EventOption)?.event?.id
@@ -244,7 +244,7 @@ class SchedulePanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(Bo
     }
 
     /**
-     * Ask the algorithm layer for the earliest feasible slots for the selected event.
+     * Asks the algorithm layer for the earliest feasible slots for the chosen event.
      */
     private fun onFindSlot() {
         try {
@@ -328,7 +328,7 @@ class SchedulePanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(Bo
         }
     }
 
-    /** Persist the highlighted slot suggestion as the official schedule. */
+    /** Makes the highlighted slot suggestion as the official schedule. */
     private fun confirmSelectedSlot() {
         val option = eventDropdown.selectedItem as? EventOption
         if (option == null) {

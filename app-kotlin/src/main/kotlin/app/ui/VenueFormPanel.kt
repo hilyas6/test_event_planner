@@ -132,7 +132,7 @@ class VenueFormPanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(B
         }
     }
 
-    /** Remove the highlighted venue row after a simple confirmation step. */
+    /** Remove the highlightted venue row after a simple confirmation step. */
     private fun deleteSelectedVenue() {
         val row = table.selectedRow
         if (row < 0) {

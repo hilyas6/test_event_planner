@@ -15,7 +15,7 @@ class ScheduledEventService(
 
     /**
      * Confirms a concrete slot for an event after validating conflicts and capacity.
-     * The underlying event is updated to reflect the chosen date/time and optional venue.
+     * The  event is updated to reflect the chosen date/time and optional venue.
      */
     fun confirmSchedule(
         eventId: String,

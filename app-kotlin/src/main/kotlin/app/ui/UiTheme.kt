@@ -23,7 +23,7 @@ import javax.swing.border.EmptyBorder
 import javax.swing.plaf.basic.BasicTabbedPaneUI
 
 /**
- * Shared colours and helpers so every panel keeps a consistent look-and-feel.
+ * Shared colours and helpers so every panel keeps a consistent looks.
  */
 object UiTheme {
     val backgroundColor: Color = Color(0xF0, 0xF3, 0xF8)

@@ -225,7 +225,7 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
     }
 
     /**
-     * Read-only summary of the currently selected event so the operator knows what they are registering for.
+     * Read-only summary of the currently selected event so the User knows what they are registering for.
      */
     private fun buildEventDetailsCard(): JComponent {
         val card = UiTheme.createCard(GridBagLayout()).apply {
@@ -294,7 +294,7 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
         return card
     }
 
-    /** Display for all registrations, honouring any selected filter. */
+    /** Display for all registration using any selected filter. */
     private fun buildTableCard(): JComponent {
         UiTheme.styleTable(table)
         val card = UiTheme.createCard(BorderLayout(10, 10)).apply {
@@ -314,7 +314,7 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
     }
 
     /**
-     * Validate participant details and ensure the event can accept them before creating the registration.
+     * Make sure participant details and ensure the event can accept them before creating the registration.
      */
     private fun register() {
         val eventOption = eventDropdown.selectedItem as? EventOption ?: run {
@@ -410,7 +410,7 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
         onDataChanged?.invoke()
     }
 
-    /** Utility to show messages both in GUI mode and headless test runs. */
+    /** Shows messages both in GUI mode and headless test runs. */
     private fun showMessage(message: String) {
         if (GraphicsEnvironment.isHeadless()) {
             println(message)
@@ -426,7 +426,7 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
     }
 
     /**
-     * Rebuild the event dropdown, only including future schedules with remaining capacity.
+     * Rebuild the event dropdown and makes sure that only future schedules with remaining capacity.
      */
     private fun refreshDropdowns() {
         val eventModel = DefaultComboBoxModel<EventOption>()
@@ -478,7 +478,7 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
     }
 
     /**
-     * Pulls registration data from storage and maps it to table rows with human-readable fields.
+     * Getts registration data from storage and maps it to table rows to read easily
      */
     private fun refreshTable() {
         val regs = AppContext.registrationService.reload()
@@ -555,7 +555,7 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
     }
 
     /**
-     * Build the distinct list of filter values from the currently loaded registrations.
+     * Builds list of filter values from the currently loaded registrations.
      */
     private fun updateFilterValues() {
         val mode = filterModeDropdown.selectedItem as? FilterMode ?: FilterMode.ALL
@@ -583,7 +583,7 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
         applyFilterAndPopulateTable()
     }
 
-    /** Applies the chosen filter mode/value and repopulates the registration table. */
+    /** Applies the chosen filter mode/value and shows it in the registration table. */
     private fun applyFilterAndPopulateTable() {
         val mode = filterModeDropdown.selectedItem as? FilterMode ?: FilterMode.ALL
         val selectedValue = filterValueDropdown.selectedItem as? String

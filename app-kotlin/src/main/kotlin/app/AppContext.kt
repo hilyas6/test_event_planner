@@ -8,7 +8,7 @@ import core.service.ScheduledEventService
 import core.service.VenueService
 
 /**
- * Global application context for shared services and data store.
+ * Global application context for Sharing services and data store.
  */
 object AppContext {
     private val dataStore = JsonFileStore()
