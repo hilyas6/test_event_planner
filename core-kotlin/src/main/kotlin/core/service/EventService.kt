@@ -6,9 +6,9 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.util.*
 
-class EventService(private val repo: EventRepository) {
+class EventService(private val eventRepository: EventRepository) {
 
-    fun all(): List<Event> = repo.allEvents()
+    fun all(): List<Event> = eventRepository.allEvents()
 
     fun addEvent(
         title: String,
@@ -39,14 +39,14 @@ class EventService(private val repo: EventRepository) {
             venueId = null
         )
 
-        repo.saveEvent(event)
+        eventRepository.saveEvent(event)
     }
 
-    fun eventById(id: String): Event? = repo.eventById(id)
+    fun eventById(id: String): Event? = eventRepository.eventById(id)
 
     fun deleteEventById(id: String) {
-        val updated = repo.allEvents().filterNot { it.id == id }
-        repo.saveAllEvents(updated)
+        val remainingEvents = eventRepository.allEvents().filterNot { it.id == id }
+        eventRepository.saveAllEvents(remainingEvents)
     }
 
     fun rescheduleEvent(
@@ -58,20 +58,20 @@ class EventService(private val repo: EventRepository) {
     ) {
         require(endTime.isAfter(startTime)) { "End time must be after start time" }
 
-        val current = repo.eventById(eventId) ?: return
+        val currentEvent = eventRepository.eventById(eventId) ?: return
 
-        val updated = current.copy(
+        val updatedEvent = currentEvent.copy(
             date = date,
             startTime = startTime,
             endTime = endTime,
-            venueId = venueId ?: current.venueId
+            venueId = venueId ?: currentEvent.venueId
         )
 
-        repo.saveEvent(updated)
+        eventRepository.saveEvent(updatedEvent)
     }
 
     fun reload(): List<Event> {
-        val store = repo as? core.repo.file.JsonFileStore
-        return store?.reloadEvents() ?: repo.allEvents()
+        val jsonStore = eventRepository as? core.repo.file.JsonFileStore
+        return jsonStore?.reloadEvents() ?: eventRepository.allEvents()
     }
 }

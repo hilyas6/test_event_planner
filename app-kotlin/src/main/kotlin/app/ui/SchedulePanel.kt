@@ -393,19 +393,19 @@ class SchedulePanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(Bo
 
             currentScheduleResults = result.toList()
 
-            val evMap = eventsList.associateBy { it.id }
-            val venueMap = venuesList.associateBy { it.id }
+            val eventsById = eventsList.associateBy { it.id }
+            val venuesById = venuesList.associateBy { it.id }
 
             val eventsByVenueDate = eventsList
                 .filter { it.venueId != null }
                 .groupBy { it.venueId!! to it.date }
 
             currentScheduleResults.forEach { r ->
-                val venueName = r.venueId.takeIf { it.isNotBlank() }?.let { venueMap[it]?.name }
+                val venueName = r.venueId.takeIf { it.isNotBlank() }?.let { venuesById[it]?.name }
                     ?: if (r.scheduled) "(venue TBD)" else "(not scheduled)"
-                val title = evMap[r.eventId]?.title ?: r.eventId
+                val title = eventsById[r.eventId]?.title ?: r.eventId
                 val currentCapacity = r.venueId.takeIf { it.isNotBlank() }?.let { venueId ->
-                    val venueCapacity = venueMap[venueId]?.capacity ?: return@let null
+                    val venueCapacity = venuesById[venueId]?.capacity ?: return@let null
                     val overlapping = eventsByVenueDate.getOrDefault(venueId to r.assignedDate, emptyList())
                         .filter { event ->
                             timesOverlap(event.startTime, event.endTime, r.startTime, r.endTime)
