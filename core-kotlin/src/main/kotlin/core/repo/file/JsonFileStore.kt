@@ -18,6 +18,11 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
 
 
+/**
+ * Lightweight JSON-backed repository implementation.
+ * Data is persisted to the nearest `data/` directory relative to the working directory
+ * so both the CLI tools and UI share the same files.
+ */
 class JsonFileStore :
     EventRepository,
     VenueRepository,
@@ -27,6 +32,11 @@ class JsonFileStore :
 
     private val dataDirectory = determineDataDirectory()
 
+    /**
+     * Walks up the current working directory to find a sibling `data` folder.
+     * If none exists, it will create one alongside the current working directory
+     * so the app always has a predictable place to read/write JSON files.
+     */
     private fun determineDataDirectory(): Path {
         val workingDirectory = Paths.get(System.getProperty("user.dir")).toAbsolutePath()
         val dataDirectoryCandidate = generateSequence(workingDirectory) { it.parent }
@@ -36,7 +46,7 @@ class JsonFileStore :
         return (dataDirectoryCandidate ?: workingDirectory.resolve("data")).normalize()
     }
 
-    // Serializer for Java time types
+    // Serializer for Java time types so they can be written as ISO-8601 strings.
     private val serializersModule = SerializersModule {
         contextual(LocalDate::class, LocalDateSerializer)
         contextual(LocalTime::class, LocalTimeSerializer)
@@ -56,6 +66,11 @@ class JsonFileStore :
         }
     }
 
+    /**
+     * Reads a JSON array from the requested file into a mutable list.
+     * Missing files are treated as empty collections to keep the UI responsive
+     * even before any data is created.
+     */
     private fun <T> load(fileName: String, deserializer: DeserializationStrategy<List<T>>): MutableList<T> {
         val path = dataDirectory.resolve(fileName)
         if (!Files.exists(path)) return mutableListOf()
@@ -63,6 +78,9 @@ class JsonFileStore :
         return json.decodeFromString(deserializer, text).toMutableList()
     }
 
+    /**
+     * Writes the given list back to disk, replacing the existing file content.
+     */
     private fun <T> save(fileName: String, serializer: SerializationStrategy<List<T>>, data: List<T>) {
         val path = dataDirectory.resolve(fileName)
         val text = json.encodeToString(serializer, data)

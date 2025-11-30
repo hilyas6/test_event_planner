@@ -2,6 +2,7 @@ package core.repo
 
 import core.model.*
 
+// Repository interfaces define storage operations; implementations can be file-based, in-memory, etc.
 interface EventRepository {
     fun allEvents(): List<Event>
     fun eventById(id: String): Event?

@@ -23,6 +23,9 @@ import javax.swing.SpinnerNumberModel
 import javax.swing.border.EmptyBorder
 import javax.swing.table.DefaultTableModel
 
+/**
+ * Form for creating and managing base event records before they are scheduled.
+ */
 class EventFormPanel : JPanel(BorderLayout(15, 15)) {
 
     private val titleField = JTextField(30)
@@ -134,6 +137,7 @@ class EventFormPanel : JPanel(BorderLayout(15, 15)) {
     }
 
     private fun generateTimeOptions(): List<String> {
+        // Generate 15-minute increments between 07:00 and 23:00 for dropdowns.
         val start = LocalTime.of(7, 0)
         val end = LocalTime.of(23, 0)
         val times = mutableListOf<String>()
@@ -145,6 +149,9 @@ class EventFormPanel : JPanel(BorderLayout(15, 15)) {
         return times
     }
 
+    /**
+     * Reloads events from storage and repopulates the table sorted by date/time.
+     */
     private fun loadEvents() {
         tableModel.rowCount = 0
         val events = AppContext.eventService.reload()
@@ -164,6 +171,10 @@ class EventFormPanel : JPanel(BorderLayout(15, 15)) {
             }
     }
 
+    /**
+     * Validates the form and sends the event to the service layer.
+     * User-friendly error messages keep the Swing UI from crashing on invalid input.
+     */
     private fun onAddEvent() {
         val title = titleField.text.trim()
         val description = descriptionField.text.trim()
@@ -213,6 +224,7 @@ class EventFormPanel : JPanel(BorderLayout(15, 15)) {
         }
     }
 
+    /** Remove the currently selected event from storage. */
     private fun onDeleteEvent() {
         val selectedRow = eventTable.selectedRow
         if (selectedRow == -1) {
@@ -225,6 +237,7 @@ class EventFormPanel : JPanel(BorderLayout(15, 15)) {
         loadEvents()
     }
 
+    /** Reset all inputs back to sensible defaults. */
     private fun clearForm() {
         titleField.text = ""
         descriptionField.text = ""

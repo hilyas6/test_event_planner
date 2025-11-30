@@ -25,6 +25,9 @@ import javax.swing.JTextField
 import javax.swing.ScrollPaneConstants
 import javax.swing.table.DefaultTableModel
 
+/**
+ * Manages participant sign-ups for confirmed schedules, including filtering and capacity checks.
+ */
 class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(BorderLayout(15, 15)) {
 
     private data class EventOption(
@@ -169,6 +172,9 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
         refreshAll()
     }
 
+    /**
+     * Participant input form, including the event selector.
+     */
     private fun buildFormCard(): JComponent {
         val card = UiTheme.createCard(GridBagLayout()).apply {
             border = BorderFactory.createCompoundBorder(
@@ -218,6 +224,9 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
         return card
     }
 
+    /**
+     * Read-only summary of the currently selected event so the operator knows what they are registering for.
+     */
     private fun buildEventDetailsCard(): JComponent {
         val card = UiTheme.createCard(GridBagLayout()).apply {
             border = BorderFactory.createCompoundBorder(
@@ -267,6 +276,7 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
         return card
     }
 
+    /** Filtering controls for the registration table. */
     private fun buildFilterCard(): JComponent {
         val card = UiTheme.createCard(FlowLayout(FlowLayout.LEFT, 12, 6)).apply {
             border = BorderFactory.createCompoundBorder(
@@ -284,6 +294,7 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
         return card
     }
 
+    /** Display for all registrations, honouring any selected filter. */
     private fun buildTableCard(): JComponent {
         UiTheme.styleTable(table)
         val card = UiTheme.createCard(BorderLayout(10, 10)).apply {
@@ -302,6 +313,9 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
         return card
     }
 
+    /**
+     * Validate participant details and ensure the event can accept them before creating the registration.
+     */
     private fun register() {
         val eventOption = eventDropdown.selectedItem as? EventOption ?: run {
             showMessage("Select an event with capacity remaining.")
@@ -396,6 +410,7 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
         onDataChanged?.invoke()
     }
 
+    /** Utility to show messages both in GUI mode and headless test runs. */
     private fun showMessage(message: String) {
         if (GraphicsEnvironment.isHeadless()) {
             println(message)
@@ -404,11 +419,15 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
         }
     }
 
+    /** Reload every source list (events, venues, schedules, participants). */
     fun refreshAll() {
         refreshDropdowns()
         refreshTable()
     }
 
+    /**
+     * Rebuild the event dropdown, only including future schedules with remaining capacity.
+     */
     private fun refreshDropdowns() {
         val eventModel = DefaultComboBoxModel<EventOption>()
 
@@ -458,6 +477,9 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
         updateEventDetails()
     }
 
+    /**
+     * Pulls registration data from storage and maps it to table rows with human-readable fields.
+     */
     private fun refreshTable() {
         val regs = AppContext.registrationService.reload()
         val participants = AppContext.participantService.reload().associateBy { it.id }
@@ -486,6 +508,7 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
         updateFilterValues()
     }
 
+    /** Update the summary card whenever the selected event changes. */
     private fun updateEventDetails() {
         val option = eventDropdown.selectedItem as? EventOption
         if (option == null) {
@@ -531,6 +554,9 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
         }
     }
 
+    /**
+     * Build the distinct list of filter values from the currently loaded registrations.
+     */
     private fun updateFilterValues() {
         val mode = filterModeDropdown.selectedItem as? FilterMode ?: FilterMode.ALL
         val values = when (mode) {
@@ -557,6 +583,7 @@ class RegistrationPanel(private val onDataChanged: (() -> Unit)? = null) : JPane
         applyFilterAndPopulateTable()
     }
 
+    /** Applies the chosen filter mode/value and repopulates the registration table. */
     private fun applyFilterAndPopulateTable() {
         val mode = filterModeDropdown.selectedItem as? FilterMode ?: FilterMode.ALL
         val selectedValue = filterValueDropdown.selectedItem as? String
