@@ -6,6 +6,10 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 
+/**
+ * Record that an event has been given a concrete date, time, and optional venue.
+ * Used by both scheduling and registration flows to coordinate availability.
+ */
 @Serializable
 data class ScheduledEvent(
     val eventId: String,

@@ -26,6 +26,10 @@ import javax.swing.ListSelectionModel
 import javax.swing.SpinnerNumberModel
 import javax.swing.table.DefaultTableModel
 
+/**
+ * Coordinates the automated scheduling workflow: propose slots, preview schedules,
+ * confirm selections, and list confirmed events.
+ */
 class SchedulePanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(BorderLayout(15, 15)) {
 
     private data class EventOption(val event: core.model.Event) {
@@ -112,6 +116,9 @@ class SchedulePanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(Bo
         refreshData()
     }
 
+    /**
+     * Apply consistent styling and hide internal IDs where necessary.
+     */
     private fun configureTables() {
         listOf(slotTable, scheduleTable, confirmedTable).forEach { table ->
             UiTheme.styleTable(table)
@@ -136,6 +143,9 @@ class SchedulePanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(Bo
         ).forEach(UiTheme::stylePrimaryButton)
     }
 
+    /**
+     * Top control block for choosing the event to schedule and triggering actions.
+     */
     private fun buildControlsCard(): JComponent {
         val card = UiTheme.createCard(GridBagLayout()).apply {
             border = BorderFactory.createCompoundBorder(
@@ -179,6 +189,7 @@ class SchedulePanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(Bo
         return card
     }
 
+    /** Wrap a table and its primary action button in a consistent card layout. */
     private fun createTableCard(title: String, table: JTable, actionButton: JButton): JComponent {
         val card = UiTheme.createCard(BorderLayout(10, 10)).apply {
             border = BorderFactory.createCompoundBorder(
@@ -197,12 +208,16 @@ class SchedulePanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(Bo
         return card
     }
 
+    /** Reload dropdown options and confirmed schedules, clearing transient suggestion tables. */
     private fun refreshData() {
         refreshEventDropdown()
         loadConfirmedSchedules()
         clearTransientTables()
     }
 
+    /**
+     * Populate the event selector with only future, unscheduled events.
+     */
     private fun refreshEventDropdown() {
         val previousId = (eventDropdown.selectedItem as? EventOption)?.event?.id
         val scheduledEventIds = AppContext.scheduledEventService.reload().map { it.eventId }.toSet()
@@ -228,6 +243,9 @@ class SchedulePanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(Bo
         plannedSizeSpinner.value = option.event.expectedSize
     }
 
+    /**
+     * Ask the algorithm layer for the earliest feasible slots for the selected event.
+     */
     private fun onFindSlot() {
         try {
             val option = eventDropdown.selectedItem as? EventOption
@@ -310,6 +328,7 @@ class SchedulePanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(Bo
         }
     }
 
+    /** Persist the highlighted slot suggestion as the official schedule. */
     private fun confirmSelectedSlot() {
         val option = eventDropdown.selectedItem as? EventOption
         if (option == null) {
@@ -347,6 +366,7 @@ class SchedulePanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(Bo
         }
     }
 
+    /** Delete a previously confirmed schedule, freeing the event for rebooking. */
     private fun removeSelectedConfirmed() {
         val row = confirmedTable.selectedRow
         if (row < 0) {
@@ -361,6 +381,9 @@ class SchedulePanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(Bo
         onDataChanged?.invoke()
     }
 
+    /**
+     * Build a full schedule preview from all unscheduled events using the algorithm module.
+     */
     private fun onBuildSchedule() {
         try {
             clearScheduleTable()
@@ -435,6 +458,7 @@ class SchedulePanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(Bo
         }
     }
 
+    /** Persist the selected generated schedule entry. */
     private fun confirmSelectedSchedule() {
         val selectedRow = scheduleTable.selectedRow
         if (selectedRow < 0) {
@@ -472,6 +496,9 @@ class SchedulePanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(Bo
         }
     }
 
+    /**
+     * Reload confirmed schedules from storage and display them alongside event/venue names.
+     */
     private fun loadConfirmedSchedules() {
         val scheduledRecords = AppContext.scheduledEventService.reload()
         val events = AppContext.eventService.reload()

@@ -6,6 +6,7 @@ import java.util.*
 
 class VenueService(private val venueRepository: VenueRepository) {
 
+    /** Lists every venue record. */
     fun all(): List<Venue> = venueRepository.allVenues()
 
     fun addVenue(name: String, capacity: Int, city: String) {
@@ -13,7 +14,7 @@ class VenueService(private val venueRepository: VenueRepository) {
         venueRepository.saveVenue(venue)
     }
 
-    // delete venue safely
+    // Delete venue safely by persisting an updated list without the target entry.
     fun deleteVenueById(id: String) {
         val remainingVenues = all().filterNot { it.id == id }
         venueRepository.saveAllVenues(remainingVenues)

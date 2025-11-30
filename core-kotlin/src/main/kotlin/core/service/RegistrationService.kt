@@ -16,6 +16,7 @@ class RegistrationService(
     private val registrationRepository: RegistrationRepository,
     private val scheduledEventRepository: ScheduledEventRepository
 ) {
+    /** Convenience wrapper to fetch every registration record. */
     fun all(): List<Registration> = registrationRepository.allRegistrations()
 
 
@@ -23,6 +24,7 @@ class RegistrationService(
         schedule: core.model.ScheduledEvent,
         participantId: String
     ): Registration {
+        // Validate that referenced objects exist before proceeding.
         val event = eventRepository.eventById(schedule.eventId)
             ?: throw IllegalArgumentException("Event not found")
         val participant = participantRepository.participantById(participantId)
@@ -37,17 +39,21 @@ class RegistrationService(
             throw IllegalStateException("Cannot register for past schedules")
         }
 
+        // Prevent duplicate registrations for the same event.
         val existingForEvent = registrationRepository.registrationsFor(schedule.eventId)
         if (existingForEvent.any { it.participantId == participantId }) {
             throw IllegalStateException("Participant is already registered")
         }
 
+        // Capacity check honours both expected size and venue limit.
         val capacityLimit = capacityLimit(event)
         val capacityRemaining = capacityLimit - existingForEvent.size
         if (capacityRemaining <= 0) {
             throw IllegalStateException("Event is at full capacity")
         }
 
+        // Prevent overlapping bookings for the same participant by comparing
+        // against both scheduled and unscheduled events on the same date.
         val scheduledByEvent = scheduledEventRepository.allScheduledEvents().associateBy { it.eventId }
         val participantRegistrations = registrationRepository.allRegistrations()
             .filter { it.participantId == participantId }
@@ -90,6 +96,7 @@ class RegistrationService(
             throw IllegalStateException("Participant has a conflicting event: $conflictTitles")
         }
 
+        // At this point the booking is valid; generate an ID and persist it.
         val registration = Registration(
             id = UUID.randomUUID().toString(),
             eventId = schedule.eventId,

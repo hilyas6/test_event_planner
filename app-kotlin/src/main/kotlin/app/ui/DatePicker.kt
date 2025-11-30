@@ -21,11 +21,17 @@ import javax.swing.SpinnerDateModel
 import javax.swing.SwingUtilities
 import javax.swing.border.EmptyBorder
 
+/**
+ * Simple date input that pairs a spinner with a popup calendar.
+ * Swing has no built-in date picker, so this helper keeps date handling consistent
+ * across all forms in the application.
+ */
 class DatePickerField(
     initialDate: LocalDate = LocalDate.now(),
     private val minDate: LocalDate? = null
 ) {
     private val zoneId = ZoneId.systemDefault()
+    // Spinner enforces a minimum date if provided, preventing accidental past selections.
     private val spinnerModel = object : SpinnerDateModel(
         java.util.Date.from(initialDate.atStartOfDay(zoneId).toInstant()),
         minDate?.let { java.util.Date.from(it.atStartOfDay(zoneId).toInstant()) },
@@ -185,6 +191,9 @@ private class CalendarDialog(
         refreshDays()
     }
 
+    /**
+     * Rebuilds the calendar grid to reflect the current month, respecting the minimum date.
+     */
     private fun refreshDays() {
         monthLabel.text = formatter.format(displayMonth)
         daysPanel.removeAll()

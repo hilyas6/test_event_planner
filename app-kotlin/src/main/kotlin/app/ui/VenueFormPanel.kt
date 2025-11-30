@@ -20,6 +20,9 @@ import javax.swing.SpinnerNumberModel
 import javax.swing.border.EmptyBorder
 import javax.swing.table.DefaultTableModel
 
+/**
+ * UI for adding, deleting, and viewing venues that events can be booked into.
+ */
 class VenueFormPanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(BorderLayout(15, 15)) {
 
     private val nameField = JTextField(12)
@@ -105,6 +108,9 @@ class VenueFormPanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(B
         refreshTable()
     }
 
+    /**
+     * Validate and persist a new venue, then refresh the table so users get immediate feedback.
+     */
     private fun addVenue() {
         try {
             val name = nameField.text.trim()
@@ -126,6 +132,7 @@ class VenueFormPanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(B
         }
     }
 
+    /** Remove the highlighted venue row after a simple confirmation step. */
     private fun deleteSelectedVenue() {
         val row = table.selectedRow
         if (row < 0) {
@@ -140,6 +147,7 @@ class VenueFormPanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(B
         onDataChanged?.invoke()
     }
 
+    /** Reload venue data from storage into the table. */
     private fun refreshTable() {
         val venues = AppContext.venueService.all()
         tableModel.setRowCount(0)
@@ -148,6 +156,7 @@ class VenueFormPanel(private val onDataChanged: (() -> Unit)? = null) : JPanel(B
         }
     }
 
+    /** Return input controls to their default state. */
     private fun clearForm() {
         nameField.text = ""
         cityField.text = ""

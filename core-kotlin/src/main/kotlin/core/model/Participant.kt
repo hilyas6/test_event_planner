@@ -4,6 +4,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.Contextual
 import java.time.LocalDate
 
+/** Details about a person who can register for events. */
 @Serializable
 data class Participant(
     val id: String,

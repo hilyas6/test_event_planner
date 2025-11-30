@@ -8,6 +8,9 @@ import java.util.*
 
 class EventService(private val eventRepository: EventRepository) {
 
+    /**
+     * Returns every event, regardless of whether it is scheduled yet.
+     */
     fun all(): List<Event> = eventRepository.allEvents()
 
     fun addEvent(
@@ -21,6 +24,8 @@ class EventService(private val eventRepository: EventRepository) {
         organiserName: String,
         organiserEmail: String
     ) {
+        // Basic validation keeps garbage data out of the repository and avoids
+        // surprising results elsewhere (e.g. scheduling or registration).
         require(title.isNotBlank()) { "Title is required" }
         require(endTime.isAfter(startTime)) { "End time must be after start time" }
         require(expectedSize > 0) { "Capacity must be positive" }
@@ -39,12 +44,15 @@ class EventService(private val eventRepository: EventRepository) {
             venueId = null
         )
 
+        // Persist the new record; repositories decide how/where it is stored.
         eventRepository.saveEvent(event)
     }
 
     fun eventById(id: String): Event? = eventRepository.eventById(id)
 
     fun deleteEventById(id: String) {
+        // Repository does not expose deletion directly, so we replace the collection
+        // without the matching entry.
         val remainingEvents = eventRepository.allEvents().filterNot { it.id == id }
         eventRepository.saveAllEvents(remainingEvents)
     }
@@ -56,6 +64,7 @@ class EventService(private val eventRepository: EventRepository) {
         endTime: LocalTime,
         venueId: String?
     ) {
+        // Avoid nonsensical time ranges before touching stored data.
         require(endTime.isAfter(startTime)) { "End time must be after start time" }
 
         val currentEvent = eventRepository.eventById(eventId) ?: return

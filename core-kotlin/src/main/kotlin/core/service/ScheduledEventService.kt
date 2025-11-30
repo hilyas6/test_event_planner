@@ -13,6 +13,10 @@ class ScheduledEventService(
     private val venueService: VenueService
 ) {
 
+    /**
+     * Confirms a concrete slot for an event after validating conflicts and capacity.
+     * The underlying event is updated to reflect the chosen date/time and optional venue.
+     */
     fun confirmSchedule(
         eventId: String,
         date: LocalDate,
@@ -33,8 +37,10 @@ class ScheduledEventService(
             throw IllegalStateException("Event is already scheduled. Remove the confirmed schedule before booking again.")
         }
 
+        // Prevent double-booking a venue or exceeding capacity before committing changes.
         ensureVenueCapacity(eventId, normalizedVenue, date, startTime, endTime)
 
+        // Keep the master event in sync with the confirmed schedule.
         eventService.rescheduleEvent(eventId, date, startTime, endTime, normalizedVenue)
 
         val record = ScheduledEvent(
