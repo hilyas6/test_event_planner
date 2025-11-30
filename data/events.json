@@ -1,1 +1,28 @@
-[]
+[
+    {
+        "id": "9cd16ca4-e505-4616-9859-3c4b3dff6a42",
+        "title": "event in past",
+        "description": "test",
+        "category": "Workshops",
+        "date": "2025-11-30",
+        "startTime": "09:00",
+        "endTime": "10:00",
+        "expectedSize": 10,
+        "organiserName": "entinpast",
+        "organiserEmail": "entinpast@gmail.com",
+        "venueId": null
+    },
+    {
+        "id": "b430dfb8-505e-476f-93a2-7303cf094375",
+        "title": "bettles",
+        "description": "none",
+        "category": "Festivals",
+        "date": "2025-11-30",
+        "startTime": "20:00",
+        "endTime": "23:00",
+        "expectedSize": 10,
+        "organiserName": "John",
+        "organiserEmail": "John123@gmail.com",
+        "venueId": "99a1fcff-e122-436e-903c-c8df0628af62"
+    }
+]

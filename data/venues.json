@@ -4,5 +4,11 @@
         "name": "Gherkin",
         "capacity": 50,
         "city": "London"
+    },
+    {
+        "id": "c86db83b-df01-461e-b182-5b42733201d6",
+        "name": "Korean BBQ",
+        "capacity": 20,
+        "city": "Birmingham"
     }
 ]
