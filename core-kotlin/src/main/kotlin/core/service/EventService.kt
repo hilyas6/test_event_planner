@@ -30,6 +30,14 @@ class EventService(private val eventRepository: EventRepository) {
         require(endTime.isAfter(startTime)) { "End time must be after start time" }
         require(expectedSize > 0) { "Capacity must be positive" }
 
+        val today = LocalDate.now()
+        require(!date.isBefore(today)) { "Event date cannot be in the past" }
+
+        if (date.isEqual(today)) {
+            val currentTime = LocalTime.now()
+            require(startTime.isAfter(currentTime)) { "Start time must be later than the current time" }
+        }
+
         val event = Event(
             id = UUID.randomUUID().toString(),
             title = title.trim(),
