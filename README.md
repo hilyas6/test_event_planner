@@ -3,6 +3,11 @@
 ## Overview
 This repository hosts a multi-language event planner application that combines Kotlin and Scala modules. The project demonstrates scheduling logic, user-interface components, and shared domain models to help organize events in a structured and reproducible manner. The documentation below is written in an academic but accessible style so technical and non-technical readers can follow along.
 
+### Application Features
+- A desktop Swing UI with tabbed workflows for creating venues and events, scheduling them, and viewing registrations. Nimbus is applied by default with a system look-and-feel fallback so buttons and inputs remain consistent across platforms.
+- JSON-backed storage that automatically locates (or creates) a `data/` directory near your working directory. Event, venue, participant, registration, and scheduled event records are read and written as prettified JSON so the UI and any supporting tools share the same state.
+- Kotlin core services for manipulating domain models plus Scala helpers for scheduling logic, all assembled through the Gradle multi-module build.
+
 ## Repository Structure
 - `app-kotlin/`: The Kotlin-based desktop application that wires together the UI and scheduling logic. The `AppContext` and `MainKt` entry point live here.
 - `core-kotlin/`: Shared domain models and serialization utilities that are consumed by both the application and supporting libraries.
