@@ -183,6 +183,9 @@ class EventFormPanel : JPanel(BorderLayout(15, 15)) {
         val category = (categoryBox.selectedItem as? String)?.trim().orEmpty()
         val start = LocalTime.parse(startTimeBox.selectedItem as String)
         val end = LocalTime.parse(endTimeBox.selectedItem as String)
+        val date = dateField.date
+        val today = LocalDate.now()
+        val currentTime = LocalTime.now()
 
         if (title.isBlank()) {
             JOptionPane.showMessageDialog(this, "Please provide a title for the event.")
@@ -200,9 +203,16 @@ class EventFormPanel : JPanel(BorderLayout(15, 15)) {
             JOptionPane.showMessageDialog(this, "End time must be after the start time.")
             return
         }
+        if (date.isBefore(today)) {
+            JOptionPane.showMessageDialog(this, "Event date cannot be in the past.")
+            return
+        }
+        if (date.isEqual(today) && !start.isAfter(currentTime)) {
+            JOptionPane.showMessageDialog(this, "Event start time must be later than now.")
+            return
+        }
 
         try {
-            val date = dateField.date
             val expectedSize = expectedSizeField.value as Int
             AppContext.eventService.addEvent(
                 title = title,
