@@ -25,15 +25,15 @@ class JsonFileStore :
     RegistrationRepository,
     ScheduledEventRepository {
 
-    private val baseDir = determineBaseDir()
+    private val dataDirectory = determineDataDirectory()
 
-    private fun determineBaseDir(): Path {
-        val workingDir = Paths.get(System.getProperty("user.dir")).toAbsolutePath()
-        val existing = generateSequence(workingDir) { it.parent }
+    private fun determineDataDirectory(): Path {
+        val workingDirectory = Paths.get(System.getProperty("user.dir")).toAbsolutePath()
+        val dataDirectoryCandidate = generateSequence(workingDirectory) { it.parent }
             .map { it.resolve("data") }
             .firstOrNull { Files.isDirectory(it) }
 
-        return (existing ?: workingDir.resolve("data")).normalize()
+        return (dataDirectoryCandidate ?: workingDirectory.resolve("data")).normalize()
     }
 
     // Serializer for Java time types
@@ -51,20 +51,20 @@ class JsonFileStore :
     }
 
     init {
-        if (!Files.exists(baseDir)) {
-            Files.createDirectories(baseDir)
+        if (!Files.exists(dataDirectory)) {
+            Files.createDirectories(dataDirectory)
         }
     }
 
     private fun <T> load(fileName: String, deserializer: DeserializationStrategy<List<T>>): MutableList<T> {
-        val path = baseDir.resolve(fileName)
+        val path = dataDirectory.resolve(fileName)
         if (!Files.exists(path)) return mutableListOf()
         val text = Files.readString(path)
         return json.decodeFromString(deserializer, text).toMutableList()
     }
 
     private fun <T> save(fileName: String, serializer: SerializationStrategy<List<T>>, data: List<T>) {
-        val path = baseDir.resolve(fileName)
+        val path = dataDirectory.resolve(fileName)
         val text = json.encodeToString(serializer, data)
         Files.writeString(path, text, CREATE, TRUNCATE_EXISTING, WRITE)
     }
@@ -79,9 +79,9 @@ class JsonFileStore :
         events.add(event)
         save("events.json", ListSerializer(Event.serializer()), events)
     }
-    override fun saveAllEvents(all: List<Event>) {
+    override fun saveAllEvents(eventList: List<Event>) {
         events.clear()
-        events.addAll(all)
+        events.addAll(eventList)
         save("events.json", ListSerializer(Event.serializer()), events)
     }
 
@@ -95,9 +95,9 @@ class JsonFileStore :
         venues.add(venue)
         save("venues.json", ListSerializer(Venue.serializer()), venues)
     }
-    override fun saveAllVenues(all: List<Venue>) {
+    override fun saveAllVenues(venueList: List<Venue>) {
         venues.clear()
-        venues.addAll(all)
+        venues.addAll(venueList)
         save("venues.json", ListSerializer(Venue.serializer()), venues)
     }
 
@@ -106,14 +106,14 @@ class JsonFileStore :
 
     override fun allParticipants(): List<Participant> = participants
     override fun participantById(id: String): Participant? = participants.find { it.id == id }
-    override fun saveParticipant(p: Participant) {
-        participants.removeIf { it.id == p.id }
-        participants.add(p)
+    override fun saveParticipant(participant: Participant) {
+        participants.removeIf { it.id == participant.id }
+        participants.add(participant)
         save("participants.json", ListSerializer(Participant.serializer()), participants)
     }
-    override fun saveAllParticipants(all: List<Participant>) {
+    override fun saveAllParticipants(participantList: List<Participant>) {
         participants.clear()
-        participants.addAll(all)
+        participants.addAll(participantList)
         save("participants.json", ListSerializer(Participant.serializer()), participants)
     }
 
@@ -122,14 +122,14 @@ class JsonFileStore :
 
     override fun allRegistrations(): List<Registration> = registrations
     override fun registrationsFor(eventId: String): List<Registration> = registrations.filter { it.eventId == eventId }
-    override fun saveRegistration(r: Registration) {
-        registrations.removeIf { it.id == r.id }
-        registrations.add(r)
+    override fun saveRegistration(registration: Registration) {
+        registrations.removeIf { it.id == registration.id }
+        registrations.add(registration)
         save("registrations.json", ListSerializer(Registration.serializer()), registrations)
     }
-    override fun saveAllRegistrations(all: List<Registration>) {
+    override fun saveAllRegistrations(registrationList: List<Registration>) {
         registrations.clear()
-        registrations.addAll(all)
+        registrations.addAll(registrationList)
         save("registrations.json", ListSerializer(Registration.serializer()), registrations)
     }
 
@@ -151,9 +151,9 @@ class JsonFileStore :
         }
     }
 
-    override fun saveAllScheduledEvents(events: List<ScheduledEvent>) {
+    override fun saveAllScheduledEvents(scheduledEventList: List<ScheduledEvent>) {
         scheduledEvents.clear()
-        scheduledEvents.addAll(events)
+        scheduledEvents.addAll(scheduledEventList)
         save("scheduled-events.json", ListSerializer(ScheduledEvent.serializer()), scheduledEvents)
     }
     // --- Reload helpers ---

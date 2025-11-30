@@ -27,42 +27,42 @@ object SlotFinder {
     val today = now.toLocalDate
     val startDate = if (earliestDate.isBefore(today)) today else earliestDate
 
-    val evs = events.asScala.toList.filter(e => !e.getDate.isBefore(startDate))
-    val vns = venues.asScala.toList.filter(_.getCapacity >= plannedSize)
-    val regs = registrations.asScala.toList
-    val parts = participants.asScala.toList
+    val relevantEvents = events.asScala.toList.filter(event => !event.getDate.isBefore(startDate))
+    val suitableVenues = venues.asScala.toList.filter(_.getCapacity >= plannedSize)
+    val registrationList = registrations.asScala.toList
+    val participantList = participants.asScala.toList
 
-    if (vns.isEmpty) return java.util.Collections.emptyList()
+    if (suitableVenues.isEmpty) return java.util.Collections.emptyList()
 
     val requestedDuration = Duration.between(preferredStart, preferredEnd)
     val durationMinutes = if (requestedDuration.isPositive) requestedDuration.toMinutes else DefaultDurationMinutes
 
     val eventsByVenueDate: Map[(String, LocalDate), List[(LocalTime, LocalTime, Int)]] =
-      evs.flatMap { event =>
-        Option(event.getVenueId).map { vid =>
-          ((vid, event.getDate), (event.getStartTime, event.getEndTime, event.getExpectedSize))
+      relevantEvents.flatMap { event =>
+        Option(event.getVenueId).map { venueId =>
+          ((venueId, event.getDate), (event.getStartTime, event.getEndTime, event.getExpectedSize))
         }
       }.groupBy(_._1).view.mapValues(_.map(_._2)).toMap.withDefaultValue(Nil)
 
-    val capacityByVenue: Map[String, Int] = vns.map(v => v.getId -> v.getCapacity).toMap
+    val capacityByVenue: Map[String, Int] = suitableVenues.map(venue => venue.getId -> venue.getCapacity).toMap
 
     val busyByParticipant: Map[String, List[(LocalDate, LocalTime, LocalTime)]] =
-      regs.flatMap { reg =>
-        evs.find(_.getId == reg.getEventId).map { event =>
-          (reg.getParticipantId, (event.getDate, event.getStartTime, event.getEndTime))
+      registrationList.flatMap { registration =>
+        relevantEvents.find(_.getId == registration.getEventId).map { event =>
+          (registration.getParticipantId, (event.getDate, event.getStartTime, event.getEndTime))
         }
       }.groupBy(_._1).view.mapValues(_.map(_._2)).toMap.withDefaultValue(Nil)
 
-    val participantIds = parts.map(_.getId).toSet
+    val participantIds = participantList.map(_.getId).toSet
 
     val suggestions = scala.collection.mutable.ListBuffer.empty[SlotSuggestion]
 
     for {
       dayOffset <- 0 until SearchDays
       date = startDate.plusDays(dayOffset.toLong)
-      venue <- vns
+      venue <- suitableVenues
     } {
-      val venueBusy = eventsByVenueDate((venue.getId, date))
+      val venueBusySlots = eventsByVenueDate((venue.getId, date))
 
       val baselineStart = if (preferredStart.isBefore(DayStart)) DayStart else preferredStart
       val presentAdjustedStart =
@@ -70,44 +70,44 @@ object SlotFinder {
           if (baselineStart.isAfter(now.toLocalTime)) baselineStart else now.toLocalTime
         } else baselineStart
 
-      val end = presentAdjustedStart.plusMinutes(durationMinutes)
+      val proposedEndTime = presentAdjustedStart.plusMinutes(durationMinutes)
 
-      if (!presentAdjustedStart.isBefore(DayStart) && !end.isAfter(DayEnd)) {
-        val withinCapacity = {
-          val overlapping = venueBusy.filter { case (s, e, _) => overlaps(s, e, presentAdjustedStart, end) }
+      if (!presentAdjustedStart.isBefore(DayStart) && !proposedEndTime.isAfter(DayEnd)) {
+        val fitsCapacity = {
+          val overlapping = venueBusySlots.filter { case (start, end, _) => overlaps(start, end, presentAdjustedStart, proposedEndTime) }
           val usedCapacity = overlapping.map(_._3).sum
           val capacity = capacityByVenue.getOrElse(venue.getId, 0)
           usedCapacity + plannedSize <= capacity
         }
 
-        if (withinCapacity) {
-          val unavailable = participantIds.count { pid =>
-            busyByParticipant(pid).exists { case (d, s, e) =>
-              d == date && overlaps(s, e, presentAdjustedStart, end)
+        if (fitsCapacity) {
+          val unavailableCount = participantIds.count { participantId =>
+            busyByParticipant(participantId).exists { case (dateBusy, start, end) =>
+              dateBusy == date && overlaps(start, end, presentAdjustedStart, proposedEndTime)
             }
           }
-          val available = participantIds.size - unavailable
-          val confidence = if (participantIds.isEmpty) 1.0 else available.toDouble / participantIds.size.toDouble
+          val availableCount = participantIds.size - unavailableCount
+          val confidence = if (participantIds.isEmpty) 1.0 else availableCount.toDouble / participantIds.size.toDouble
           val capacityFit = math.min(1.0, plannedSize.toDouble / math.max(1, venue.getCapacity).toDouble)
           val compositeScore = confidence * 0.7 + (1 - capacityFit) * 0.3
-          val note = if (unavailable == 0) {
+          val note = if (unavailableCount == 0) {
             s"All ${participantIds.size} participants are free"
           } else {
-            s"$available of ${participantIds.size} participants free"
+            s"$availableCount of ${participantIds.size} participants free"
           }
-          suggestions += new SlotSuggestion(venue.getId, date, presentAdjustedStart, end, compositeScore, note)
+          suggestions += new SlotSuggestion(venue.getId, date, presentAdjustedStart, proposedEndTime, compositeScore, note)
         }
       }
     }
 
-    val sorted = suggestions.toList
-      .sortBy(s => (s.getDate(), s.getStartTime(), Option(s.getVenueId()).getOrElse("")))
+    val sortedSuggestions = suggestions.toList
+      .sortBy(suggestion => (suggestion.getDate(), suggestion.getStartTime(), Option(suggestion.getVenueId()).getOrElse("")))
 
     val earliestByVenue = scala.collection.mutable.LinkedHashMap.empty[String, SlotSuggestion]
-    sorted.foreach { s =>
-      val venueKey = Option(s.getVenueId()).getOrElse("")
+    sortedSuggestions.foreach { suggestion =>
+      val venueKey = Option(suggestion.getVenueId()).getOrElse("")
       if (!earliestByVenue.contains(venueKey)) {
-        earliestByVenue.put(venueKey, s)
+        earliestByVenue.put(venueKey, suggestion)
       }
     }
 

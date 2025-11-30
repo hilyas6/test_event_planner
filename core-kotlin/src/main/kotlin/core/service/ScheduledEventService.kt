@@ -8,7 +8,7 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 
 class ScheduledEventService(
-    private val repo: ScheduledEventRepository,
+    private val scheduledEventRepository: ScheduledEventRepository,
     private val eventService: EventService,
     private val venueService: VenueService
 ) {
@@ -23,10 +23,10 @@ class ScheduledEventService(
         val normalizedVenue = venueId?.takeIf { it.isNotBlank() }
         require(endTime.isAfter(startTime)) { "End time must be after start time" }
 
-        val existing = eventService.eventById(eventId)
+        eventService.eventById(eventId)
             ?: throw IllegalArgumentException("Event not found")
 
-        val alreadyScheduled = repo.allScheduledEvents()
+        val alreadyScheduled = scheduledEventRepository.allScheduledEvents()
             .firstOrNull { it.eventId == eventId }
 
         if (alreadyScheduled != null) {
@@ -45,17 +45,17 @@ class ScheduledEventService(
             endTime = endTime,
             confirmedAt = LocalDateTime.now()
         )
-        repo.saveScheduledEvent(record)
+        scheduledEventRepository.saveScheduledEvent(record)
         return record
     }
 
     fun removeSchedule(eventId: String) {
-        repo.deleteScheduledEventByEventId(eventId)
+        scheduledEventRepository.deleteScheduledEventByEventId(eventId)
     }
 
     fun reload(): List<ScheduledEvent> {
-        val store = repo as? JsonFileStore
-        return store?.reloadScheduledEvents() ?: repo.allScheduledEvents()
+        val jsonStore = scheduledEventRepository as? JsonFileStore
+        return jsonStore?.reloadScheduledEvents() ?: scheduledEventRepository.allScheduledEvents()
     }
 
     private fun ensureVenueCapacity(
@@ -70,7 +70,7 @@ class ScheduledEventService(
         val venue = venueService.all().firstOrNull { it.id == venueId }
             ?: throw IllegalArgumentException("Venue not found")
         val allEvents = eventService.all().associateBy { it.id }
-        val scheduledForVenue = repo.allScheduledEvents()
+        val scheduledForVenue = scheduledEventRepository.allScheduledEvents()
             .filter { it.venueId == venueId && it.date == date && it.eventId != eventId }
 
         val overlappingUsage = scheduledForVenue.filter { existing ->

@@ -5,36 +5,36 @@ import core.repo.ParticipantRepository
 import java.time.LocalDate
 import java.util.*
 
-class ParticipantService(private val repo: ParticipantRepository) {
+class ParticipantService(private val participantRepository: ParticipantRepository) {
 
     fun upsertParticipant(
         firstName: String,
         lastName: String,
-        dob: LocalDate,
+        dateOfBirth: LocalDate,
         phone: String,
         email: String
     ): Participant {
         val trimmedEmail = email.trim()
-        val current = repo.allParticipants()
-        val existing = current.firstOrNull { it.email.equals(trimmedEmail, ignoreCase = true) }
-        val participant = if (existing != null) {
-            existing.copy(
+        val existingParticipants = participantRepository.allParticipants()
+        val matchingParticipant = existingParticipants.firstOrNull { it.email.equals(trimmedEmail, ignoreCase = true) }
+        val participant = if (matchingParticipant != null) {
+            matchingParticipant.copy(
                 firstName = firstName,
                 lastName = lastName,
-                dateOfBirth = dob,
+                dateOfBirth = dateOfBirth,
                 phone = phone,
                 email = trimmedEmail
             )
         } else {
-            Participant(UUID.randomUUID().toString(), firstName, lastName, dob, phone, trimmedEmail)
+            Participant(UUID.randomUUID().toString(), firstName, lastName, dateOfBirth, phone, trimmedEmail)
         }
-        val updated = current.filterNot { it.id == participant.id } + participant
-        repo.saveAllParticipants(updated)
+        val mergedParticipants = existingParticipants.filterNot { it.id == participant.id } + participant
+        participantRepository.saveAllParticipants(mergedParticipants)
         return participant
     }
     fun reload(): List<Participant> {
-        val store = repo as? core.repo.file.JsonFileStore
-        return store?.reloadParticipants() ?: repo.allParticipants()
+        val jsonStore = participantRepository as? core.repo.file.JsonFileStore
+        return jsonStore?.reloadParticipants() ?: participantRepository.allParticipants()
     }
 
 }

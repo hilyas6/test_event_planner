@@ -11,11 +11,11 @@ import core.service.VenueService
  * Global application context for shared services and data store.
  */
 object AppContext {
-    private val store = JsonFileStore()
+    private val dataStore = JsonFileStore()
 
-    val eventService = EventService(store)
-    val venueService = VenueService(store)
-    val participantService = ParticipantService(store)
-    val registrationService = RegistrationService(store, store, store, store, store)
-    val scheduledEventService = ScheduledEventService(store, eventService, venueService)
+    val eventService = EventService(dataStore)
+    val venueService = VenueService(dataStore)
+    val participantService = ParticipantService(dataStore)
+    val registrationService = RegistrationService(dataStore, dataStore, dataStore, dataStore, dataStore)
+    val scheduledEventService = ScheduledEventService(dataStore, eventService, venueService)
 }

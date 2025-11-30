@@ -4,23 +4,23 @@ import core.model.Venue
 import core.repo.VenueRepository
 import java.util.*
 
-class VenueService(private val repo: VenueRepository) {
+class VenueService(private val venueRepository: VenueRepository) {
 
-    fun all(): List<Venue> = repo.allVenues()
+    fun all(): List<Venue> = venueRepository.allVenues()
 
     fun addVenue(name: String, capacity: Int, city: String) {
         val venue = Venue(UUID.randomUUID().toString(), name, capacity, city)
-        repo.saveVenue(venue)
+        venueRepository.saveVenue(venue)
     }
 
     // delete venue safely
     fun deleteVenueById(id: String) {
-        val updated = all().filterNot { it.id == id }
-        repo.saveAllVenues(updated)
+        val remainingVenues = all().filterNot { it.id == id }
+        venueRepository.saveAllVenues(remainingVenues)
     }
     fun reload(): List<Venue> {
-        val store = repo as? core.repo.file.JsonFileStore
-        return store?.reloadVenues() ?: repo.allVenues()
+        val jsonStore = venueRepository as? core.repo.file.JsonFileStore
+        return jsonStore?.reloadVenues() ?: venueRepository.allVenues()
     }
 
 }

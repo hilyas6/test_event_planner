@@ -16,54 +16,54 @@ object Scheduler {
                              registrations: java.util.List[Registration],
                              preferenceScores: java.util.Map[String, java.lang.Double]): java.util.List[ScheduleResult] = {
 
-    val evs = events.asScala.toList
-    val vns = venues.asScala.toList
-    val regs = registrations.asScala.toList
-    val prefs = preferenceScores.asScala.view.mapValues(_.doubleValue()).toMap.withDefaultValue(0.0)
+    val eventList = events.asScala.toList
+    val venueList = venues.asScala.toList
+    val registrationList = registrations.asScala.toList
+    val preferenceScoreByEvent = preferenceScores.asScala.view.mapValues(_.doubleValue()).toMap.withDefaultValue(0.0)
 
-    val eventById = evs.map(e => e.getId -> e).toMap
+    val eventById = eventList.map(event => event.getId -> event).toMap
 
     val participantsByEvent: Map[String, Set[String]] =
-      regs.groupBy(_.getEventId).view.mapValues(_.map(_.getParticipantId).toSet).toMap.withDefaultValue(Set.empty)
+      registrationList.groupBy(_.getEventId).view.mapValues(_.map(_.getParticipantId).toSet).toMap.withDefaultValue(Set.empty)
 
-    val busyByParticipant: Map[String, List[(LocalDate, LocalTime, LocalTime, String)]] =
-      regs.flatMap { reg =>
-        eventById.get(reg.getEventId).map { event =>
-          (reg.getParticipantId, (event.getDate, event.getStartTime, event.getEndTime, event.getId))
+    val busySlotsByParticipant: Map[String, List[(LocalDate, LocalTime, LocalTime, String)]] =
+      registrationList.flatMap { registration =>
+        eventById.get(registration.getEventId).map { event =>
+          (registration.getParticipantId, (event.getDate, event.getStartTime, event.getEndTime, event.getId))
         }
       }.groupBy(_._1).view.mapValues(_.map(_._2)).toMap.withDefaultValue(Nil)
 
-    val sortedEvents = evs.sortWith { (a, b) =>
-      val scoreA = prefs(a.getId)
-      val scoreB = prefs(b.getId)
-      if (scoreA != scoreB) scoreA > scoreB
-      else if (a.getDate != b.getDate) a.getDate.isBefore(b.getDate)
-      else a.getStartTime.isBefore(b.getStartTime)
+    val prioritizedEvents = eventList.sortWith { (left, right) =>
+      val leftScore = preferenceScoreByEvent(left.getId)
+      val rightScore = preferenceScoreByEvent(right.getId)
+      if (leftScore != rightScore) leftScore > rightScore
+      else if (left.getDate != right.getDate) left.getDate.isBefore(right.getDate)
+      else left.getStartTime.isBefore(right.getStartTime)
     }
 
-    val venueUsage = scala.collection.mutable.Map.empty[(String, LocalDate), List[(LocalTime, LocalTime, Int)]]
+    val venueUsageByDay = scala.collection.mutable.Map.empty[(String, LocalDate), List[(LocalTime, LocalTime, Int)]]
     val participantUsage = scala.collection.mutable.Map.empty[String, List[(LocalDate, LocalTime, LocalTime, String)]]
-    busyByParticipant.foreach { case (pid, slots) => participantUsage.update(pid, slots) }
+    busySlotsByParticipant.foreach { case (participantId, slots) => participantUsage.update(participantId, slots) }
 
-    val results = scala.collection.mutable.ListBuffer.empty[ScheduleResult]
+    val scheduleResults = scala.collection.mutable.ListBuffer.empty[ScheduleResult]
 
-    sortedEvents.foreach { event =>
+    prioritizedEvents.foreach { event =>
       val interestedParticipants = participantsByEvent(event.getId)
       val durationMinutes = math.max(15L, java.time.Duration.between(event.getStartTime, event.getEndTime).toMinutes)
       val requestedStart = event.getStartTime
       val requestedEnd = requestedStart.plusMinutes(durationMinutes)
       val today = LocalDate.now()
       val baselineDate = if (event.getDate.isAfter(today)) event.getDate else today
-      val candidateVenues = preferredVenues(vns, event)
+      val candidateVenues = preferredVenues(venueList, event)
 
       if (!slotWithinDay(requestedStart, durationMinutes)) {
-        results += new ScheduleResult(event.getId, "", event.getDate, requestedStart, requestedEnd, 0.0, "Requested time outside scheduling hours", false)
+        scheduleResults += new ScheduleResult(event.getId, "", event.getDate, requestedStart, requestedEnd, 0.0, "Requested time outside scheduling hours", false)
       } else {
         val searchDates = (0 until SearchWindowDays).map(offset => baselineDate.plusDays(offset.toLong))
 
         val assignmentOpt = candidateVenues.to(LazyList).flatMap { venue =>
           searchDates.to(LazyList).collectFirst {
-            case date if venueAvailable(venueUsage.getOrElse((venue.getId, date), Nil), requestedStart, durationMinutes, event.getExpectedSize, venue.getCapacity) &&
+            case date if venueAvailable(venueUsageByDay.getOrElse((venue.getId, date), Nil), requestedStart, durationMinutes, event.getExpectedSize, venue.getCapacity) &&
               participantsAvailable(pid => participantUsage.getOrElse(pid, Nil), interestedParticipants, date, requestedStart, durationMinutes) =>
 
               val conflicts = countConflicts(pid => participantUsage.getOrElse(pid, Nil), interestedParticipants, date, requestedStart, durationMinutes)
@@ -75,24 +75,24 @@ object Scheduler {
 
         assignmentOpt match {
           case Some((venue, date, start, end, confidence, note)) =>
-            results += new ScheduleResult(event.getId, venue.getId, date, start, end, confidence, note, true)
+            scheduleResults += new ScheduleResult(event.getId, venue.getId, date, start, end, confidence, note, true)
             val dayKey = (venue.getId, date)
-            val existing = venueUsage.getOrElse(dayKey, Nil)
-            venueUsage.update(dayKey, (start, end, event.getExpectedSize) :: existing)
-            interestedParticipants.foreach { pid =>
-              val updated = (date, start, end, event.getId) :: participantUsage.getOrElse(pid, Nil)
-              participantUsage.update(pid, updated)
+            val existingUsage = venueUsageByDay.getOrElse(dayKey, Nil)
+            venueUsageByDay.update(dayKey, (start, end, event.getExpectedSize) :: existingUsage)
+            interestedParticipants.foreach { participantId =>
+              val updated = (date, start, end, event.getId) :: participantUsage.getOrElse(participantId, Nil)
+              participantUsage.update(participantId, updated)
             }
           case None =>
             val message =
               if (candidateVenues.isEmpty) "No venue meets the capacity requirement"
               else "No available venue found within the search window"
-            results += new ScheduleResult(event.getId, "", event.getDate, requestedStart, requestedEnd, 0.0, message, false)
+            scheduleResults += new ScheduleResult(event.getId, "", event.getDate, requestedStart, requestedEnd, 0.0, message, false)
         }
       }
     }
 
-    results.asJava
+    scheduleResults.asJava
   }
 
   private def preferredVenues(venues: List[Venue], event: Event): List[Venue] = {
