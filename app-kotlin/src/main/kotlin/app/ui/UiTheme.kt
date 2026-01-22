@@ -33,6 +33,9 @@ object UiTheme {
     val borderColor: Color = Color(0xD7, 0xDE, 0xEA)
     val buttonColor: Color = Color(0x36, 0x70, 0xF4)
     val highlightColor: Color = Color(0xB9, 0xC6, 0xD9)
+    val tabBarColor: Color = Color(0xF9, 0xF5, 0xEF)
+    val tabBackgroundColor: Color = Color(0xFF, 0xFB, 0xF6)
+    val tabSelectedColor: Color = Color(0xFF, 0xE4, 0xC7)
 
     private val baseFont: Font = Font("Segoe UI", Font.PLAIN, 14).let { candidate ->
         // Fall back to the current look-and-feel's default font when Segoe UI isn't available so
@@ -123,7 +126,7 @@ object UiTheme {
     }
 
     fun applyToolbarTheme(tabbedPane: JTabbedPane): JPanel {
-        tabbedPane.background = backgroundColor
+        tabbedPane.background = tabBarColor
         tabbedPane.isOpaque = false
         tabbedPane.border = EmptyBorder(0, 0, 0, 0)
         tabbedPane.tabLayoutPolicy = JTabbedPane.SCROLL_TAB_LAYOUT
@@ -154,9 +157,9 @@ object UiTheme {
         fun refreshSelection() {
             buttons.forEachIndexed { idx, button ->
                 val selected = tabbedPane.selectedIndex == idx
-                val background = if (selected) buttonColor else cardColor
-                val foreground = if (selected) Color.WHITE else textColor
-                val borderCol = if (selected) buttonColor.darker() else borderColor
+                val background = if (selected) tabSelectedColor else tabBackgroundColor
+                val foreground = textColor
+                val borderCol = if (selected) tabSelectedColor.darker() else borderColor
                 button.background = background
                 button.foreground = foreground
                 button.border = BorderFactory.createCompoundBorder(
@@ -171,7 +174,7 @@ object UiTheme {
         refreshSelection()
 
         return JPanel(java.awt.FlowLayout(java.awt.FlowLayout.CENTER, 18, 0)).apply {
-            background = backgroundColor
+            background = tabBarColor
             border = BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(0, 0, 1, 0, borderColor),
                 EmptyBorder(12, 18, 12, 18)
